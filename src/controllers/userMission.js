@@ -3,6 +3,7 @@ const redisClient = require("../config/redish");
 const jwt = require("jsonwebtoken");
 const validate = require("../utils/validator");
 const mongoose = require('mongoose')
+const User = require("../models/user")
 require("dotenv").config();
 // Create Mission (Admin only)
 const CreateMission = async (req, res) => {
@@ -51,6 +52,13 @@ const UpdateMission = async (req, res) => {
         });
 
         await mission.save();
+
+        if (mission.isCompleted === true) {
+            await User.updateMany(
+                { _id: { $in: mission.avengersAssigned } },
+                { $addToSet: { missionCompleted: mission._id } } // $addToSet prevents duplicates
+            );
+        }
 
         res.status(200).send({
             message: "Mission updated successfully",
@@ -119,6 +127,34 @@ const getAllMission = async (req, res) => {
 };
 
 
+const getCompletedMissionsByUser = async (req, res) => {
+    try {
+        // Get the logged-in user's ID from userMiddleware
+        const userId = req.result._id;
+
+        // Find the user and populate the completed missions
+        const user = await User.findById(userId)
+            .populate({
+                path: 'missionCompleted',
+                select: 'title description Location difficulty isCompleted createdAt updatedAt'
+            });
+
+        if (!user) {
+            return res.status(404).send({ error: "User not found" });
+        }
+
+        res.status(200).send({
+            message: "Completed missions fetched successfully",
+            completedMissions: user.missionCompleted
+        });
+    } catch (error) {
+        res.status(500).send({
+            error: "Server Error",
+            details: error.message
+        });
+    }
+};
+
 
 module.exports = {
     CreateMission,
@@ -126,5 +162,6 @@ module.exports = {
     DeleteMission,
     getMissionById,
     getAllMission,
+    getCompletedMissionsByUser
     
 };

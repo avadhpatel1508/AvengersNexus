@@ -41,7 +41,7 @@ const login = async (req,res)=>{
         if(!match)
             throw new Error("Invalid Credentials");
 
-        const token =  jwt.sign({_id:user._id , emailId:emailId, role: user.role},process.env.JWT_KEY,{expiresIn:  7 * 24 * 60 * 60});
+        const token =  jwt.sign({_id:user._id , emailId:emailId, role: user.role},process.env.JWT_KEY,{expiresIn:'7d'});
         res.cookie('token',token,{maxAge: 7 * 24 * 60 * 60*1000});
         res.status(200).send("Logged In Succeessfully" , user);
     }
@@ -92,4 +92,17 @@ const adminRegister = async(req,res)=>{
     }
 }
 
-module.exports = {register, login, logout , adminRegister};
+const deleteProfile = async(req,res)=>{
+
+    try{
+        const userId = req.result._id
+
+        await User.findByIdAndDelete(userId)
+        res.status(200).send("Profile delete successfully")
+    }
+    catch(err){
+        res.status(500).sned("Internal server error")
+    }
+}
+
+module.exports = {register, login, logout , adminRegister, deleteProfile};
