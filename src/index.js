@@ -15,7 +15,7 @@ app.use(cookieParser());
 app.use('/user',authRouter)
 app.use('/mission', missionRouter)
 app.use('/post', postRouter)
-app.use('/submission', submitRouter)
+
 
 
 const InitializeConnection = async()=>{

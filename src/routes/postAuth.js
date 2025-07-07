@@ -7,7 +7,7 @@ const { CreatePost, UpdatePost, DeletePost, getPostById, getAllPost} = require('
 //admin
 postRouter.post('/create',adminMiddleware, CreatePost);
 postRouter.put('/:id',adminMiddleware, UpdatePost);
-postRouter.delete('/delete/:ip',adminMiddleware, DeletePost);
+postRouter.delete('/delete/:id',adminMiddleware, DeletePost);
 //user as well as admin
 postRouter.get('/:id', getPostById);
 postRouter.get('/', getAllPost);

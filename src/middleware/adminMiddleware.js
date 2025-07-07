@@ -12,26 +12,20 @@ const adminMiddleware = async(req,res,next)=>{
 
         const payload =  jwt.verify(token,process.env.JWT_KEY);
 
-        const {_id} = payload;
+        const {_id,role} = payload;
 
-
-        if(!_id)
-            throw new Error("Invalid token") 
+        if (!role || role !== 'admin') throw new Error("Access denied: Admins only");
+        const isblocked = await redisClient.exists(`token:${token}`);
+        if (isblocked) throw new Error("Invalid Token");
 
         const result= await User.findById(_id)
-
-        if(payload.role!='admin')
-            throw new Error("Invalid Token")
 
         if(!result)
             throw new Error("User Doesn't exist")
 
         //Redish ke blocklist mai to present nai hai
 
-        const isBlocked = await redisClient.exists(`token:${token}`);
-
-        if(isBlocked)
-            throw new Error("Invalid Token")
+       
 
         req.result = result;
 
