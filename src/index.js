@@ -28,6 +28,7 @@ const InitializeConnection = async()=>{
     }
     catch(err){
         console.log("Eror is: "+err)
+        console.log("Error occured")
     }
 }
 
