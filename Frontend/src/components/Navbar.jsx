@@ -19,6 +19,8 @@ function Navbar({ user, handleLogout }) {
                         <li><NavLink to="/your-reward" className="block px-4 py-2 hover:bg-gray-100">Your Reward</NavLink></li>
                         <li><NavLink to="/attendance-summary" className="block px-4 py-2 hover:bg-gray-100">Attendance</NavLink></li>
                         <li><NavLink to="/your-missions" className="block px-4 py-2 hover:bg-gray-100">Your Missions</NavLink></li>
+                        <li><NavLink to="/your-missions" className="block px-4 py-2 hover:bg-gray-100">Attendance</NavLink></li>
+
                         <li><button onClick={handleLogout} className="block w-full text-left px-4 py-2 hover:bg-gray-100">Logout</button></li>
                     </ul>
                 </div>
