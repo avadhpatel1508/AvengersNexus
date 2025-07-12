@@ -1,6 +1,6 @@
 const express = require('express');
 const authRouter = express.Router();
-const { register, login, logout, adminRegister, deleteProfile, getAllUsers, getPresentUsers } = require("../controllers/userAuthent");
+const { register, login, logout, adminRegister, deleteProfile, getAllUsers } = require("../controllers/userAuthent");
 const userMiddleware = require("../middleware/userMiddleware");
 const adminMiddleware = require("../middleware/adminMiddleware");
 
@@ -23,6 +23,6 @@ authRouter.get('/check', userMiddleware, (req, res) => {
     });
 });
 authRouter.get('/users', adminMiddleware, getAllUsers);
-authRouter.get('/present', userMiddleware, getPresentUsers)
+// authRouter.post('/getProfile', getProfile);
 
 module.exports = authRouter;

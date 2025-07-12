@@ -1,89 +1,83 @@
 const User = require('../models/user');
 
-const generateOTP = () => Math.floor(1000 + Math.random() * 9000).toString();
+// Generate 4-digit OTP
+const generateOtp = () => Math.floor(1000 + Math.random() * 9000).toString();
 
-const startAttendance = async (req, res) => {
+// ✅ Admin route → Send OTP to a user
+const sendOtpToUser = async (req, res) => {
+    const { userId } = req.body;
+
     try {
-        const otpCode = generateOTP();
+        const otpCode = generateOtp();
         const expiresAt = new Date(Date.now() + 60 * 1000); // 1 minute from now
 
-        // Set OTP for all users
-        await User.updateMany({}, {
-            $set: {
-                otp: { code: otpCode, expiresAt }
+        const user = await User.findByIdAndUpdate(userId, {
+            otp: {
+                code: otpCode,
+                expiresAt,
+                verified: false
             }
-        });
+        }, { new: true, runValidators: true });
 
-        res.status(200).json({
-            message: 'Attendance session started',
-            otp: otpCode, // only show in dev/test
-            expiresAt
-        });
+        if (!user) return res.status(404).json({ message: "User not found" });
 
-        // OPTIONAL: Set a timer to auto-mark absent users after expiry
-        setTimeout(async () => {
-            const now = new Date();
-            const users = await User.find();
+        // TODO: Implement OTP delivery (e.g., SMS, Email)
+        // Example: await sendOtpViaEmail(user.email, otpCode);
 
-            for (const user of users) {
-                const todayMarked = user.attendance.find(
-                    a => new Date(a.date).toDateString() === now.toDateString()
-                );
-
-                if (!todayMarked) {
-                    user.attendance.push({
-                        date: now,
-                        status: 'Absent'
-                    });
-                    user.otp = {}; // clear otp after use
-                    await user.save();
-                }
-            }
-
-        }, 60 * 1000); // 1 minute
-    } catch (err) {
-        res.status(500).json({ message: 'Failed to start attendance', error: err.message });
+        res.status(200).json({ message: "OTP sent successfully" });
+    } catch (error) {
+        res.status(500).json({ message: "Server error", error: error.message });
     }
 };
-const submitAttendance = async (req, res) => {
+
+// ✅ User route → Verify OTP and mark attendance
+const verifyOtpAndMarkAttendance = async (req, res) => {
+    const { userId } = req.user; // userId from JWT middleware
+    const { enteredOtp } = req.body;
+
     try {
-        const { userId, otpEntered } = req.body;
         const user = await User.findById(userId);
-        const now = new Date();
+        if (!user) return res.status(404).json({ message: "User not found" });
 
-        if (!user || !user.otp || !user.otp.code) {
-            return res.status(400).json({ message: "No active OTP session" });
+        const otpData = user.otp;
+
+        if (!otpData || new Date() > otpData.expiresAt) {
+            // Mark Absent if OTP expired
+            user.attendance.push({
+                date: new Date(),
+                time: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' }),
+                status: 'Absent'
+            });
+            user.otp = undefined;
+            await user.save();
+            return res.status(400).json({ message: "OTP expired", status: "Absent" });
         }
 
-        const isValid = otpEntered === user.otp.code && now < new Date(user.otp.expiresAt);
-
-        if (!isValid) {
-            return res.status(400).json({ message: "Invalid or expired OTP" });
+        if (otpData.code !== enteredOtp) {
+            // Wrong OTP → mark Absent
+            user.attendance.push({
+                date: new Date(),
+                time: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' }),
+                status: 'Absent'
+            });
+            user.otp = undefined;
+            await user.save();
+            return res.status(400).json({ message: "Incorrect OTP", status: "Absent" });
         }
 
-        // Check if already marked
-        const alreadyMarked = user.attendance.find(
-            a => new Date(a.date).toDateString() === now.toDateString()
-        );
-
-        if (alreadyMarked) {
-            return res.status(400).json({ message: "Attendance already submitted today" });
-        }
-
-        // Mark Present
+        // ✅ Correct OTP → mark Present
         user.attendance.push({
-            date: now,
+            date: new Date(),
+            time: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' }),
             status: 'Present'
         });
-
-        user.otp = {}; // clear OTP after successful submit
+        user.otp = undefined; // Clear OTP
         await user.save();
 
-        res.status(200).json({ message: "Marked Present" });
-
-    } catch (err) {
-        res.status(500).json({ message: "Attendance submission failed", error: err.message });
+        res.status(200).json({ message: "Attendance marked as Present", status: "Present" });
+    } catch (error) {
+        res.status(500).json({ message: "Server error", error: error.message });
     }
 };
 
-module.exports = {submitAttendance, startAttendance};
+module.exports = { sendOtpToUser, verifyOtpAndMarkAttendance };
