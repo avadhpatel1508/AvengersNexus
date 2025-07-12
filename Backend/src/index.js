@@ -13,7 +13,7 @@ const attendanceRouter = require('./routes/attendanceRouter');
 const cors = require('cors');
 
 app.use(cors({
-    origin:'http://localhost:5173',
+    origin:'https://avengersnexus.vercel.ap',
     credentials:true
 }))
 

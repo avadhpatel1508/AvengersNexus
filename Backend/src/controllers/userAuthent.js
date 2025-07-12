@@ -150,5 +150,22 @@ const getAllUsers = async (req, res) => {
     });
   }
 }
+const getPresentUsers = async (req, res) => {
+  const { startDate, endDate } = req.query;
 
-module.exports = { register, login, logout, adminRegister, deleteProfile , getAllUsers};
+  try {
+    const users = await User.find({
+      attendance: {
+        $elemMatch: {
+          date: { $gte: new Date(startDate), $lte: new Date(endDate) },
+          status: "Present"
+        }
+      }
+    }).select('firstName lastName'); // optional: limit returned fields
+
+    res.json({ users });
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching present users", error: err.message });
+  }
+};
+module.exports = { register, login, logout, adminRegister, deleteProfile , getAllUsers, getPresentUsers};
