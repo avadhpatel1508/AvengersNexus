@@ -13,7 +13,30 @@ function UserMission() {
         const fetchMission = async () => {
             try {
                 const response = await axiosClient.get('/mission/getAllMission');
-                setMissions(response.data);
+                const missionData = Array.isArray(response.data) ? response.data : [];
+
+                // Fetch user details for avengersAssigned in each mission
+                const missionsWithAvengers = await Promise.all(
+                    missionData.map(async (mission) => {
+                        if (Array.isArray(mission.avengersAssigned) && mission.avengersAssigned.length > 0) {
+                            const avengerPromises = mission.avengersAssigned.map(async (avengerId) => {
+                                try {
+                                    const avengerResponse = await axiosClient.get(`/user/getUser/${avengerId}`);
+                                    const avenger = avengerResponse.data;
+                                    return avenger && avenger._id && avenger.firstName ? avenger : null;
+                                } catch (error) {
+                                    console.error(`Error fetching user ${avengerId}:`, error);
+                                    return null;
+                                }
+                            });
+                            const avengers = (await Promise.all(avengerPromises)).filter((avenger) => avenger !== null);
+                            return { ...mission, avengersAssigned: avengers };
+                        }
+                        return { ...mission, avengersAssigned: [] };
+                    })
+                );
+
+                setMissions(missionsWithAvengers);
             } catch (error) {
                 console.error('Error fetching missions:', error);
             }
@@ -31,7 +54,7 @@ function UserMission() {
 
     // Filter missions where user is either assigned or has completed
     const userMissions = missions.filter((mission) =>
-        mission.avengersAssigned?.includes(user._id) ||
+        mission.avengersAssigned?.some((avenger) => avenger._id === user._id) ||
         mission.completedBy === user._id ||
         user.missionCompleted?.includes(mission._id)
     );
@@ -64,29 +87,21 @@ function UserMission() {
     const getDifficultyColor = (difficulty) => {
         switch (difficulty?.toLowerCase()) {
             case 'hard':
-                return '#F87171'; // Red for hard difficulty
+                return '#F87171';
             case 'medium':
-                return '#FBBF24'; // Yellow for medium difficulty
+                return '#FBBF24';
             case 'easy':
-                return '#34D399'; // Green for easy difficulty
+                return '#34D399';
             default:
-                return '#6B7280'; // Gray for unknown/undefined difficulty
+                return '#6B7280';
         }
     };
-
-    // Create a map of user IDs to first names from the user object
-    const userMap = user.users ? user.users.reduce((acc, u) => {
-        acc[u._id] = u.firstName;
-        return acc;
-    }, {}) : {};
 
     return (
         <div className="min-h-screen bg-black text-white relative overflow-hidden">
             {/* Dynamic Background */}
             <div className="fixed inset-0 z-0">
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-cyan-900/20"></div>
-                
-                {/* Animated Grid */}
                 <div className="absolute inset-0 opacity-10">
                     <div className="w-full h-full" style={{
                         backgroundImage: `
@@ -97,14 +112,9 @@ function UserMission() {
                         animation: 'grid-move 20s linear infinite',
                     }}></div>
                 </div>
-
-                {/* Floating Orbs */}
                 <motion.div
                     className="absolute w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl"
-                    style={{
-                        left: mousePosition.x - 192,
-                        top: mousePosition.y - 192,
-                    }}
+                    style={{ left: mousePosition.x - 192, top: mousePosition.y - 192 }}
                     transition={{ type: "spring", stiffness: 50, damping: 30 }}
                 />
                 <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
@@ -145,7 +155,6 @@ function UserMission() {
                                 variants={itemVariants}
                                 whileHover={{ boxShadow: "0 0 20px rgba(34, 211, 238, 0.3)" }}
                             >
-                                {/* Tech UI Elements */}
                                 <div className="absolute top-2 left-2 w-3 h-3 bg-cyan-400 rounded-full animate-pulse"></div>
                                 <div className="absolute top-2 right-2 w-3 h-3 bg-purple-400 rounded-full animate-pulse delay-500"></div>
                                 <div
@@ -170,25 +179,21 @@ function UserMission() {
                                         <span className="text-gray-300">{mission.isCompleted ? "Completed" : "Pending"}</span>
                                     </p>
                                     {mission.isCompleted && (
-                                        <>
-                                            <p>
-                                                <span className="font-semibold text-white">🕒 Completed At:</span>{" "}
-                                                <span className="text-gray-300">{mission.completedAt ? new Date(mission.completedAt).toLocaleDateString() : "N/A"}</span>
-                                            </p>
-                                           
-                                        </>
+                                        <p>
+                                            <span className="font-semibold text-white">🕒 Completed At:</span>{" "}
+                                            <span className="text-gray-300">{mission.completedAt ? new Date(mission.completedAt).toLocaleDateString() : "N/A"}</span>
+                                        </p>
                                     )}
                                     <p>
                                         <span className="font-semibold text-white">🦸 Avengers Assigned:</span>{" "}
                                         <span className="text-gray-300">
                                             {mission.avengersAssigned?.length > 0
-                                                ? mission.avengersAssigned.map(firstName => userMap[firstName] || firstName).join(', ')
-                                                : 'None'}
+                                                ? mission.avengersAssigned.map((avenger) => avenger.firstName || avenger._id).join(", ")
+                                                : "None"}
                                         </span>
                                     </p>
                                 </div>
 
-                                {/* Scan Lines */}
                                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/5 to-transparent animate-pulse"></div>
                             </motion.div>
                         ))
@@ -196,7 +201,6 @@ function UserMission() {
                 </motion.div>
             </div>
 
-            {/* Custom Styles */}
             <style jsx>{`
                 @keyframes grid-move {
                     0% { transform: translate(0, 0); }

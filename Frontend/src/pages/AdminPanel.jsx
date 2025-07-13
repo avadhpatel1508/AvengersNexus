@@ -115,7 +115,7 @@ function AdminPanel() {
                             { to: "/posts", label: "Posts" },
                             { to: "/missions", label: "Missions" },
                             { to: "/attendance", label: "Attendance" },
-                            { to: "/contact-admin", label: "Contact Admin" }
+                            { to: "/avengers", label: "Avengers" }
                         ].map((item, index) => (
                             <motion.div
                                 key={item.to}

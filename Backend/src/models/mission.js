@@ -4,17 +4,17 @@ const { Schema } = mongoose;
 const missionSchema = new Schema({
     title: {
         type: String,
-        required: true  // Changed from 'require' to 'required'
+        required: true 
     },
     description: {
         type: String,
         minLength: 10,
         maxLength: 100,
-        required: true  // Changed from 'require' to 'required'
+        required: true
     },
     Location: {
         type: String,
-        required: true,  // Changed from 'require' to 'required'
+        required: true,  
         minLength: 2,
         maxLength: 15
     },
@@ -37,17 +37,12 @@ const missionSchema = new Schema({
         enum: ['easy', 'medium', 'hard'],
         required: true  // Changed from 'require' to 'required'
     },
-     isCompleted: {
+    isCompleted: {
     type: Boolean,
     default: false
   },
   completedAt: {
     type: Date,
-    default: null
-  },
-  completedBy: {
-    type: Schema.Types.ObjectId,
-    ref: "user",
     default: null
   }
 });

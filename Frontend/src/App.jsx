@@ -11,6 +11,7 @@ import UserMission from "./pages/userMission";
 import AdminPanel from "./pages/AdminPanel";
 import MissionUpdations from "./pages/MissionUpdations";
 import PostUpdations from "./pages/PostUpdations";
+import Avengers from "./pages/Avengers";
 function App() {
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
@@ -36,6 +37,8 @@ function App() {
         <Route path="/admin" element={isAuthenticated ? <AdminPanel /> : <Navigate to="/signup" />}/>
         <Route path="/missionupdations" element={isAuthenticated ? <MissionUpdations /> : <Navigate to="/signup" />}/>
         <Route path="/postupdations" element={isAuthenticated ? <PostUpdations /> : <Navigate to="/signup" /> }/>
+        <Route path="/avengers" element={isAuthenticated ? <Avengers /> : <Navigate to="/signup" /> }/>
+
         
         {/*<Route path="/attendaceupdations" element={isAuthenticated ? <AttendanceUpdations /> : <Navigate to="/signup" />} /> */}
       </Routes>

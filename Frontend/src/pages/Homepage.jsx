@@ -161,12 +161,7 @@ function Homepage() {
                     initial="hidden"
                     animate={isLoaded ? "visible" : "hidden"}
                 >
-                    <motion.div 
-                        className="text-cyan-400 text-sm font-semibold tracking-widest mb-4"
-                        variants={itemVariants}
-                    >
-                        [ CLASSIFIED OPERATION ]
-                    </motion.div>
+                    
                     
                     <motion.h1
                         className="text-6xl md:text-8xl font-black mb-6 leading-tight"
@@ -175,7 +170,7 @@ function Homepage() {
                         <span className="text-white">THE</span>
                         <br />
                         <span className="bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                            FUTURE
+                            AVENGERESNEXUS
                         </span>
                         <br />
                         <span className="text-white">IS HERE</span>

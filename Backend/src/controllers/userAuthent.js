@@ -168,4 +168,29 @@ const getPresentUsers = async (req, res) => {
     res.status(500).json({ message: "Error fetching present users", error: err.message });
   }
 };
-module.exports = { register, login, logout, adminRegister, deleteProfile , getAllUsers, getPresentUsers};
+
+const getUserById = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    // Validate ObjectId
+    if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: 'Invalid user ID format' });
+    }
+    const user = await User.findById(userId).select('_id firstName emailId role');
+    if (!user) {
+      return res.status(404).json({ message: `User with ID ${userId} not found` });
+    }
+    // Ensure firstName is included, fallback to empty string if undefined
+    const userData = {
+      _id: user._id,
+      firstName: user.firstName || '',
+      emailId: user.emailId || '',
+      role: user.role || 'user',
+    };
+    res.status(200).json({ ...userData, message: 'User retrieved successfully' });
+  } catch (error) {
+    console.error(`Error fetching user ${req.params.id}:`, error.message);
+    res.status(500).json({ message: 'Server error while fetching user' });
+  }
+};
+module.exports = { register, login, logout, adminRegister, deleteProfile , getAllUsers, getPresentUsers, getUserById};
