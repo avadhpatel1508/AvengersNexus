@@ -38,13 +38,13 @@ function MissionsPage() {
                 );
 
                 setMissions(missionsWithAvengers);
+                setIsLoaded(true); // Set loaded state after data is fetched
             } catch (error) {
                 console.error('Error fetching missions:', error.response?.data || error.message);
+                setIsLoaded(true); // Ensure preloader stops even if there's an error
             }
         };
 
-        // Set loaded state and handle mouse movement for dynamic orb
-        setIsLoaded(true);
         fetchMissions();
 
         const handleMouseMove = (e) => {
@@ -78,6 +78,13 @@ function MissionsPage() {
         },
     };
 
+    // Preloader animation variants
+    const preloaderVariants = {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1, transition: { duration: 0.5 } },
+        exit: { opacity: 0, transition: { duration: 0.5 } },
+    };
+
     return (
         <div className="min-h-screen bg-black text-white relative overflow-hidden">
             {/* Dynamic Background */}
@@ -109,6 +116,44 @@ function MissionsPage() {
                 <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-pink-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
             </div>
 
+            {/* Preloader */}
+            {!isLoaded && (
+                <motion.div
+                    className="fixed inset-0 flex items-center justify-center z-50 bg-black/80 backdrop-blur-sm"
+                    variants={preloaderVariants}
+                    initial="visible"
+                    animate="visible"
+                    exit="hidden"
+                >
+                    <div className="flex flex-col items-center space-y-6">
+                        {/* Loading Spinner */}
+                        <motion.div
+                            className="relative w-24 h-24"
+                            animate={{ rotate: 360 }}
+                            transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                        >
+                            <div className="absolute inset-0 border-4 border-t-cyan-400 border-r-purple-400 border-b-pink-400 border-l-transparent rounded-full"></div>
+                        </motion.div>
+                        {/* Loading Text */}
+                        <motion.p
+                            className="text-2xl font-mono text-cyan-400"
+                            animate={{ opacity: [0.5, 1, 0.5] }}
+                            transition={{ repeat: Infinity, duration: 1.5 }}
+                        >
+                            Initializing Mission Data...
+                        </motion.p>
+                        {/* Scanning Effect */}
+                        <div className="w-64 h-2 bg-cyan-400/20 rounded-full overflow-hidden">
+                            <motion.div
+                                className="h-full bg-gradient-to-r from-cyan-400 to-purple-400"
+                                animate={{ x: [-256, 256] }}
+                                transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                            />
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+
             {/* Main Content */}
             <div className="relative z-10 p-8">
                 <motion.h2
@@ -128,7 +173,7 @@ function MissionsPage() {
                     initial="hidden"
                     animate={isLoaded ? "visible" : "hidden"}
                 >
-                    {missions.length === 0 ? (
+                    {missions.length === 0 && isLoaded ? (
                         <motion.p
                             className="col-span-full text-center text-xl text-gray-400"
                             variants={itemVariants}
