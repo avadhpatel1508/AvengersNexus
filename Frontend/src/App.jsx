@@ -39,8 +39,6 @@ function App() {
         <Route path="/postupdations" element={isAuthenticated ? <PostUpdations /> : <Navigate to="/signup" /> }/>
         <Route path="/avengers" element={isAuthenticated ? <Avengers /> : <Navigate to="/signup" /> }/>
 
-        
-        {/*<Route path="/attendaceupdations" element={isAuthenticated ? <AttendanceUpdations /> : <Navigate to="/signup" />} /> */}
       </Routes>
     </>
   );
