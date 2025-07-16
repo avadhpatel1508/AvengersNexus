@@ -1,20 +1,20 @@
 import axios from "axios";
 
 const axiosClient = axios.create({
-  // ✅ Make sure this is set in Vercel env variables
-  baseURL: process.env.REACT_APP_API_BASE_URL || "http://localhost:5000", // fallback for local dev
-  withCredentials: true, // Sends cookies for cross-origin requests
+  baseURL: "http://localhost:4000/",
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// 🔑 Add token to headers if available
+// 🔑 Add an interceptor to include the token
 axiosClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token"); // adjust storage if needed
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization = token;
+
     }
     return config;
   },
