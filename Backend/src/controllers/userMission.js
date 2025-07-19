@@ -5,29 +5,47 @@ const validate = require("../utils/validator");
 const mongoose = require('mongoose')
 const User = require("../models/user")
 require("dotenv").config();
+
 // Create Mission (Admin only)
-const CreateMission = async (req, res) => {
-      try{
-         const { title, description, Location, avengersAssigned, difficulty } = req.body;
+const   CreateMission = async (req, res) => {
+  try {
+    const { title, description, Location, avengersAssigned, difficulty, amount } = req.body;
 
-        // 5. Create the mission
-        const mission = await Mission.create({
-            title,
-            description,
-            Location,
-            avengersAssigned,
-            difficulty: difficulty.toLowerCase(),
-        });
-
-        res.status(201).send({ message: "Mission created successfully", mission });
-    } catch (err) {
-        res.status(400).send({ error: err.message });
+    if (!title || !description || !Location || !avengersAssigned || !difficulty || !amount) {
+      return res.status(400).json({ message: "Missing required fields." });
     }
+
+    // Create dummy paymentInfo array (1 entry per avenger)
+    const paymentInfo = avengersAssigned.map(avengerId => ({
+      user: avengerId,
+      amount,
+      currency: "INR",
+      paymentIntentId: "", // will be filled post Stripe session
+      status: "pending",
+      paidAt: null
+    }));
+
+    const newMission = new Mission({
+      title,
+      description,
+      Location,
+      avengersAssigned,
+      difficulty,
+      paymentInfo
+    });
+
+    await newMission.save();
+
+    res.status(201).json({ message: "Mission created successfully", mission: newMission });
+  } catch (error) {
+    console.error("Create Mission Error:", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
   }
+};
 // Update Mission (Admin only)
 const UpdateMission = async (req, res) => {
     try {
-        const { id } = req.params;
+        const { _id } = req.params;
 
         const allowedUpdates = ['title', 'description', 'Location', 'difficulty', 'avengersAssigned', 'isCompleted'];
         const updates = Object.keys(req.body);
@@ -58,6 +76,7 @@ const UpdateMission = async (req, res) => {
                 { _id: { $in: mission.avengersAssigned } },
                 { $addToSet: { missionCompleted: mission._id } } // $addToSet prevents duplicates
             );
+        
         }
 
         res.status(200).send({
@@ -149,6 +168,76 @@ const getCompletedMissionsByUser =  async(req,res)=>{
     }
 }
 
+const completeMissionById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { amountPerUser } = req.body; // Expecting admin to set payout amount per user
+
+    const mission = await Mission.findById(id).populate('avengersAssigned');
+    if (!mission) return res.status(404).json({ error: "Mission not found" });
+
+    if (mission.isCompleted) {
+      return res.status(400).json({ error: "Mission is already completed" });
+    }
+
+    const paymentResults = [];
+
+    for (const user of mission.avengersAssigned) {
+      if (!user.stripeAccountId) {
+        paymentResults.push({ user: user._id, status: 'failed', reason: 'No Stripe account linked' });
+        continue;
+      }
+
+      try {
+        const transfer = await stripe.transfers.create({
+          amount: amountPerUser * 100, // Convert INR to paise
+          currency: 'inr',
+          destination: user.stripeAccountId,
+          description: `Payout for mission: ${mission.title}`
+        });
+
+        mission.paymentInfo.push({
+          user: user._id,
+          amount: amountPerUser,
+          currency: 'INR',
+          paymentIntentId: transfer.id,
+          status: 'succeeded',
+          paidAt: new Date()
+        });
+
+        user.totalReward += amountPerUser;
+        user.missionCompleted.addToSet(mission._id); // prevent duplicate
+        await user.save();
+
+        paymentResults.push({ user: user._id, status: 'succeeded' });
+      } catch (err) {
+        mission.paymentInfo.push({
+          user: user._id,
+          amount: amountPerUser,
+          currency: 'INR',
+          paymentIntentId: null,
+          status: 'failed',
+          paidAt: new Date()
+        });
+
+        paymentResults.push({ user: user._id, status: 'failed', reason: err.message });
+      }
+    }
+
+    mission.isCompleted = true;
+    mission.completedAt = new Date();
+    await mission.save();
+
+    res.status(200).json({
+      message: "Mission marked as completed and payments processed",
+      missionId: mission._id,
+      payments: paymentResults
+    });
+  } catch (err) {
+    console.error("Error completing mission:", err);
+    res.status(500).json({ error: "Failed to complete mission", details: err.message });
+  }
+};
 
 module.exports = {
     CreateMission,
@@ -156,6 +245,7 @@ module.exports = {
     DeleteMission,
     getMissionById,
     getAllMission,
-    getCompletedMissionsByUser
+    getCompletedMissionsByUser,
+    completeMissionById
     
 };

@@ -193,4 +193,7 @@ const getUserById = async (req, res) => {
     res.status(500).json({ message: 'Server error while fetching user' });
   }
 };
+
+
+
 module.exports = { register, login, logout, adminRegister, deleteProfile , getAllUsers, getPresentUsers, getUserById};

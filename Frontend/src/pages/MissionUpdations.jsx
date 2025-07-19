@@ -5,8 +5,8 @@ import { useNavigate } from 'react-router';
 
 const modes = {
   CREATE: 'create',
-  UPDATE: 'update',
-  DELETE: 'delete'
+  UPDATE: 'complete',
+  DELETE: 'delete',
 };
 
 const MissionUpdations = () => {
@@ -18,10 +18,12 @@ const MissionUpdations = () => {
     Location: '',
     avengersAssigned: [],
     difficulty: 'easy',
+    amount: '',
     isCompleted: false,
     completedAt: null,
-    completedBy: null
+    completedBy: null,
   });
+
   const [users, setUsers] = useState([]);
   const [allMissions, setAllMissions] = useState([]);
   const [selectedMissionId, setSelectedMissionId] = useState('');
@@ -31,75 +33,48 @@ const MissionUpdations = () => {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await axiosClient.get('/user/users');
-        const usersArray = Array.isArray(response.data.users) ? response.data.users : [];
-        const validUsers = usersArray.filter(
-          user => user._id && user.firstName && user.role === 'user'
-        );
-        setUsers(validUsers);
-        if (validUsers.length === 0) {
-          setError('No users with role "user" found.');
-        }
-      } catch (err) {
-        setError(err.response?.data?.message || 'Failed to fetch users.');
-      }
-    };
-    fetchUsers();
-  }, []);
-
-  useEffect(() => {
-    if (mode !== modes.CREATE) {
-      axiosClient.get('/mission/getAllMission')
+    if (mode === modes.CREATE) {
+      axiosClient.get('/user/users')
         .then(res => {
-          const data = Array.isArray(res.data) ? res.data : res.data.missions;
-          setAllMissions(data || []);
+          const validUsers = (res.data.users || []).filter(
+            user => user._id && user.firstName && user.role === 'user'
+          );
+          setUsers(validUsers);
         })
-        .catch(() => setError('Failed to fetch missions.'));
+        .catch(() => setError('Failed to fetch users.'));
     }
   }, [mode]);
 
   useEffect(() => {
-    if (mode === modes.UPDATE && selectedMissionId) {
-      axiosClient.get(`/mission/${selectedMissionId}`)
-        .then(res => {
-          const data = res.data.mission;
-          setFormData({
-            title: data.title || '',
-            description: data.description || '',
-            Location: data.Location || '',
-            avengersAssigned: data.avengersAssigned || [],
-            difficulty: data.difficulty || 'easy',
-            isCompleted: data.isCompleted || false,
-            completedAt: data.completedAt || null,
-            completedBy: data.completedBy || null
-          });
-        })
-        .catch(() => setError('Failed to fetch mission data.'));
-    }
-  }, [selectedMissionId]);
+    axiosClient.get('/mission/getAllMission')
+      .then(res => {
+        const data = Array.isArray(res.data) ? res.data : res.data.missions;
+        const filtered = mode === modes.UPDATE
+          ? data.filter(m => !m.isCompleted)
+          : data;
+        setAllMissions(filtered || []);
+      })
+      .catch(() => setError('Failed to fetch missions.'));
+  }, [mode]);
 
   useEffect(() => {
-    const handleMouseMove = (e) => setMousePosition({ x: e.clientX, y: e.clientY });
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+    const handleMouseMove = (e) =>
+      setMousePosition({ x: e.clientX, y: e.clientY });
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
   const handleCheckboxChange = (userId) => {
     setFormData(prev => {
-      const avengersAssigned = prev.avengersAssigned.includes(userId)
+      const updated = prev.avengersAssigned.includes(userId)
         ? prev.avengersAssigned.filter(id => id !== userId)
         : [...prev.avengersAssigned, userId];
-      return { ...prev, avengersAssigned };
+      return { ...prev, avengersAssigned: updated };
     });
   };
 
@@ -109,41 +84,42 @@ const MissionUpdations = () => {
     setSuccess('');
     setIsSubmitting(true);
 
-    if (formData.avengersAssigned.length === 0) {
-      setError('Assign at least one Avenger');
-      setIsSubmitting(false);
-      return;
-    }
-
-    const updatedFormData = { ...formData };
-
-    if (updatedFormData.isCompleted && !updatedFormData.completedAt) {
-      updatedFormData.completedAt = new Date().toISOString();
-    }
-
-    if (updatedFormData.isCompleted && !updatedFormData.completedBy) {
-      updatedFormData.completedBy = "System"; // Or currentUser._id if available
-    }
-
     try {
       if (mode === modes.CREATE) {
-        await axiosClient.post('/mission/create', updatedFormData);
+        if (formData.avengersAssigned.length === 0) {
+          setError('Assign at least one Avenger.');
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (!formData.amount || isNaN(formData.amount) || Number(formData.amount) <= 0) {
+          setError('Enter a valid amount.');
+          setIsSubmitting(false);
+          return;
+        }
+
+        await axiosClient.post('/mission/create', formData);
         setSuccess('✅ Mission created!');
-      } else if (mode === modes.UPDATE && selectedMissionId) {
-        await axiosClient.patch(`/mission/${selectedMissionId}`, updatedFormData);
-        setSuccess('✅ Mission updated!');
+        setFormData({
+          title: '',
+          description: '',
+          Location: '',
+          avengersAssigned: [],
+          difficulty: 'easy',
+          amount: '',
+          isCompleted: false,
+          completedAt: null,
+          completedBy: null,
+        });
       }
 
-      setFormData({
-        title: '',
-        description: '',
-        Location: '',
-        avengersAssigned: [],
-        difficulty: 'easy',
-        isCompleted: false,
-        completedAt: null,
-        completedBy: null
-      });
+      if (mode === modes.UPDATE && selectedMissionId) {
+        await axiosClient.patch(`/mission/complete/${selectedMissionId}`, {
+          isCompleted: true,
+          completedAt: new Date(),
+        });
+        setSuccess('✅ Mission marked as complete!');
+      }
 
       setTimeout(() => navigate('/missions'), 1500);
     } catch (err) {
@@ -155,7 +131,7 @@ const MissionUpdations = () => {
 
   const handleDelete = async () => {
     if (!selectedMissionId) {
-      setError("Select a mission to delete");
+      setError('Select a mission to delete');
       return;
     }
     setIsSubmitting(true);
@@ -173,44 +149,50 @@ const MissionUpdations = () => {
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
-      {/* Background Effects */}
+      {/* Background */}
       <div className="fixed inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-cyan-900/20"></div>
-        <motion.div className="absolute w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl"
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-cyan-900/20" />
+        <motion.div
+          className="absolute w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl"
           style={{ left: mousePosition.x - 192, top: mousePosition.y - 192 }}
-          transition={{ type: "spring", stiffness: 50, damping: 30 }}
         />
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-pink-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
       </div>
 
       <div className="relative z-10 flex items-center justify-center min-h-screen">
         <div className="w-full max-w-lg">
           {/* Mode Buttons */}
           <div className="flex justify-center gap-4 mb-6">
-            {Object.values(modes).map(m => (
-              <button key={m} onClick={() => {
-                setMode(m);
-                setError('');
-                setSuccess('');
-                setFormData({
-                  title: '',
-                  description: '',
-                  Location: '',
-                  avengersAssigned: [],
-                  difficulty: 'easy',
-                  isCompleted: false,
-                  completedAt: null,
-                  completedBy: null
-                });
-              }} className={`px-4 py-2 rounded ${mode === m ? 'bg-cyan-500' : 'bg-gray-700'}`}>
-                {m.charAt(0).toUpperCase() + m.slice(1)}
+            {Object.values(modes).map((m) => (
+              <button
+                key={m}
+                onClick={() => {
+                  setMode(m);
+                  setError('');
+                  setSuccess('');
+                  setFormData({
+                    title: '',
+                    description: '',
+                    Location: '',
+                    avengersAssigned: [],
+                    difficulty: 'easy',
+                    amount: '',
+                    isCompleted: false,
+                    completedAt: null,
+                    completedBy: null,
+                  });
+                  setSelectedMissionId('');
+                }}
+                className={`px-4 py-2 rounded ${
+                  mode === m ? 'bg-cyan-500' : 'bg-gray-700'
+                }`}
+              >
+                {m === 'complete' ? 'Complete Mission' : m.charAt(0).toUpperCase() + m.slice(1)}
               </button>
             ))}
           </div>
 
-          {/* Dropdown for update/delete */}
-          {mode !== modes.CREATE && (
+          {/* Dropdown (only for complete/delete modes) */}
+          {(mode === modes.UPDATE || mode === modes.DELETE) && (
             <select
               value={selectedMissionId}
               onChange={(e) => setSelectedMissionId(e.target.value)}
@@ -218,30 +200,59 @@ const MissionUpdations = () => {
             >
               <option value="">Select a mission</option>
               {allMissions.map(m => (
-                <option key={m._id} value={m._id}>{m.title}</option>
+                <option key={m._id} value={m._id}>
+                  {m.title}
+                </option>
               ))}
             </select>
           )}
 
-          {/* Form for create/update */}
-          {mode !== modes.DELETE && (
+          {/* Complete Mission Form */}
+          {mode === modes.UPDATE && (
             <motion.form
               onSubmit={handleSubmit}
               className="bg-black/50 backdrop-blur-md p-8 rounded-lg border border-cyan-400/20 shadow-lg flex flex-col gap-5"
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
+              transition={{ duration: 0.8 }}
+            >
+              <h2 className="text-3xl font-bold text-center text-cyan-400">
+                Complete Mission
+              </h2>
+              {error && <p className="text-center text-sm text-red-400">{error}</p>}
+              {success && <p className="text-center text-sm text-green-400">{success}</p>}
+
+              <motion.button
+                type="submit"
+                disabled={!selectedMissionId || isSubmitting}
+                className={`bg-green-600 p-3 rounded text-white font-semibold ${
+                  isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
+                }`}
+              >
+                {isSubmitting ? 'Completing...' : 'Complete Mission'}
+              </motion.button>
+            </motion.form>
+          )}
+
+          {/* Create Form */}
+          {mode === modes.CREATE && (
+            <motion.form
+              onSubmit={handleSubmit}
+              className="bg-black/50 backdrop-blur-md p-8 rounded-lg border border-cyan-400/20 shadow-lg flex flex-col gap-5"
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
             >
               <h2 className="text-3xl font-bold text-center bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-                {mode === modes.UPDATE ? 'Update Mission' : 'Create New Avengers Mission'}
+                Create New Avengers Mission
               </h2>
-
               {error && <p className="text-center text-sm text-red-400">{error}</p>}
               {success && <p className="text-center text-sm text-green-400">{success}</p>}
 
               <input name="title" placeholder="Title" value={formData.title} onChange={handleChange} required className="bg-black/20 border border-cyan-400/30 p-3 rounded text-white" />
               <textarea name="description" placeholder="Description" value={formData.description} onChange={handleChange} required className="bg-black/20 border border-cyan-400/30 p-3 rounded text-white h-32" />
               <input name="Location" placeholder="Location" value={formData.Location} onChange={handleChange} required className="bg-black/20 border border-cyan-400/30 p-3 rounded text-white" />
+              <input type="number" name="amount" placeholder="Amount" value={formData.amount} onChange={handleChange} className="bg-black/20 border border-cyan-400/30 p-3 rounded text-white" />
 
               <div>
                 <label className="block mb-1">Assign Avengers:</label>
@@ -261,17 +272,12 @@ const MissionUpdations = () => {
                 ))}
               </select>
 
-              <label className="text-white">
-                <input type="checkbox" name="isCompleted" checked={formData.isCompleted} onChange={handleChange} className="mr-2" />
-                Mark as Completed
-              </label>
-
               <motion.button
                 type="submit"
                 disabled={isSubmitting}
                 className={`bg-gradient-to-r from-cyan-500 to-purple-600 p-3 rounded text-white font-semibold ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
               >
-                {isSubmitting ? 'Processing...' : (mode === modes.UPDATE ? 'Update Mission' : 'Deploy Mission')}
+                {isSubmitting ? 'Deploying...' : 'Deploy Mission'}
               </motion.button>
             </motion.form>
           )}
@@ -281,9 +287,12 @@ const MissionUpdations = () => {
             <motion.button
               onClick={handleDelete}
               disabled={isSubmitting}
-              className={`w-full bg-red-600 p-3 rounded text-white font-semibold mt-4 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
+              className={`w-full bg-red-600 p-3 rounded text-white font-semibold mt-4 ${
+                isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
+              }`}
             >
               {isSubmitting ? 'Deleting...' : 'Delete Mission'}
+             
             </motion.button>
           )}
         </div>
@@ -293,5 +302,3 @@ const MissionUpdations = () => {
 };
 
 export default MissionUpdations;
-
-

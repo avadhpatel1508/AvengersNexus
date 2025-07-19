@@ -42,26 +42,29 @@ export const checkAuth = createAsyncThunk(
   'auth/check',
   async (_, { rejectWithValue }) => {
     try {
-      const { data } = await axiosClient.get('/user/check');
+      const { data } = await axiosClient.get('/user/check', {
+        withCredentials: true, // ensures cookies (token) are sent
+      });
+
+      // Only return user if backend confirmed token is valid and not blocked
       return data.user;
     } catch (error) {
       return rejectWithValue(parseAxiosError(error));
     }
   }
 );
-
 // Logout User
 export const logoutUser = createAsyncThunk(
   'auth/logout',
   async (_, { rejectWithValue }) => {
     try {
-      await axiosClient.post('/logout');
-      return null;
+      await axiosClient.post('/user/logout'); // Endpoint that clears the cookie on the server
+      return true;
     } catch (error) {
       return rejectWithValue(parseAxiosError(error));
     }
   }
-);
+)
 
 // Auth Slice
 const authSlice = createSlice({
@@ -127,15 +130,15 @@ const authSlice = createSlice({
       })
 
       // Logout User
+            // Logout User
       .addCase(logoutUser.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(logoutUser.fulfilled, (state) => {
+      .addCase(logoutUser.fulfilled, (state) => {  // ✅ Corrected with dot
         state.loading = false;
-        state.user = null;
         state.isAuthenticated = false;
-        state.error = null;
+        state.user = null;
       })
       .addCase(logoutUser.rejected, (state, action) => {
         state.loading = false;
@@ -143,6 +146,7 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.user = null;
       });
+
   },
 });
 

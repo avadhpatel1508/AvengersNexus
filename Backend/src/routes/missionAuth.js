@@ -2,14 +2,26 @@ const express = require('express');
 const missionRouter = express.Router();
 const adminMiddleware = require('../middleware/adminMiddleware');
 const userMiddleware = require("../middleware/userMiddleware");
-const { CreateMission, UpdateMission, DeleteMission, getMissionById, getAllMission, getCompletedMissionsByUser } = require('../controllers/userMission');
+
+const {
+  CreateMission,
+  UpdateMission,
+  DeleteMission,
+  getMissionById,
+  getAllMission,
+  getCompletedMissionsByUser,
+  completeMissionById // ✅ imported correctly
+} = require('../controllers/userMission');
 
 // Admin routes
 missionRouter.post('/create', adminMiddleware, CreateMission);
 missionRouter.patch('/:id', adminMiddleware, UpdateMission);
 missionRouter.delete('/:id', adminMiddleware, DeleteMission);
 
-// User + Admin routes (more specific ones first)
+// Complete mission route (admin only)
+missionRouter.patch('/complete/:id', adminMiddleware, completeMissionById);
+
+// User + Admin routes
 missionRouter.get('/getAllMission', userMiddleware, getAllMission);
 missionRouter.get('/missionCompletedByUser', userMiddleware, getCompletedMissionsByUser);
 

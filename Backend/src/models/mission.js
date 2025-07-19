@@ -2,51 +2,70 @@ const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
 const missionSchema = new Schema({
-    title: {
-        type: String,
-        required: true 
-    },
-    description: {
-        type: String,
-        minLength: 10,
-        maxLength: 100,
-        required: true
-    },
-    Location: {
-        type: String,
-        required: true,  
-        minLength: 2,
-        maxLength: 15
-    },
-    avengersAssigned: [{
-        type: Schema.Types.ObjectId,
-        ref: "user",
-        validate: {
-        validator: function(v) {
+  title: {
+    type: String,
+    required: true 
+  },
+  description: {
+    type: String,
+    minLength: 10,
+    maxLength: 100,
+    required: true
+  },
+  Location: {
+    type: String,
+    required: true,  
+    minLength: 2,
+    maxLength: 15
+  },
+  avengersAssigned: [{
+    type: Schema.Types.ObjectId,
+    ref: "user",
+    validate: {
+      validator: function (v) {
         return mongoose.Types.ObjectId.isValid(v);
-        },
-        message: props => `${props.value} is not a valid user ID!`
+      },
+      message: props => `${props.value} is not a valid user ID!`
     } 
-}],
-    createdAt: {
-        type: Date,
-        default: Date.now
-    },
-    difficulty: {
-        type: String,
-        enum: ['easy', 'medium', 'hard'],
-        required: true  // Changed from 'require' to 'required'
-    },
-    isCompleted: {
+  }],
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  difficulty: {
+    type: String,
+    enum: ['easy', 'medium', 'hard'],
+    required: true
+  },
+  isCompleted: {
     type: Boolean,
     default: false
   },
   completedAt: {
     type: Date,
     default: null
-  }
+  },
+  paymentInfo: [
+    {
+      user: {
+        type: Schema.Types.ObjectId,
+        ref: "user"
+      },
+      amount: Number,
+      currency: {
+        type: String,
+        default: "INR"
+      },
+      paymentIntentId: String, // Stripe transfer ID
+      status: {
+        type: String,
+        enum: ['pending', 'succeeded', 'failed'],
+        default: 'pending'
+      },
+      paidAt: Date
+    }
+  ]
 });
 
 const Mission = mongoose.model('mission', missionSchema);
-
 module.exports = Mission;

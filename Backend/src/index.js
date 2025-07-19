@@ -7,7 +7,7 @@ const authRouter = require("./routes/userAuth");
 const redisClient = require('./config/redish');
 const missionRouter = require("./routes/missionAuth")
 const postRouter = require("./routes/postAuth");
-const attendanceRouter = require('./routes/attendanceRouter');
+
 
 
 const cors = require('cors');
@@ -23,7 +23,7 @@ app.use(cookieParser());
 app.use('/user',authRouter)
 app.use('/mission', missionRouter)
 app.use('/post', postRouter)
-app.use('/attendance', attendanceRouter);
+
 
 
 
