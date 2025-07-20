@@ -40,10 +40,6 @@ const userSchema = new Schema({
     ref: 'mission',
     unique: true
   }],
-  attendance: [{
-    date: { type: Date, required: true },
-    status: { type: String, enum: ['Present', 'Absent'], required: true }
-  }],
   otp: {
     code: { type: String },
     expiresAt: { type: Date },

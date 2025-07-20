@@ -12,6 +12,9 @@ import AdminPanel from "./pages/AdminPanel";
 import MissionUpdations from "./pages/MissionUpdations";
 import PostUpdations from "./pages/PostUpdations";
 import Avengers from "./pages/Avengers";
+import AttendanceStart from './components/Attendance/AttendanceStart';
+import AttendanceSubmit from './components/Attendance/AttendanceSubmit';
+import AttendanceHistory from './components/Attendance/AttendanceHistory';
 function App() {
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
@@ -38,6 +41,29 @@ function App() {
         <Route path="/missionupdations" element={isAuthenticated ? <MissionUpdations /> : <Navigate to="/signup" />}/>
         <Route path="/postupdations" element={isAuthenticated ? <PostUpdations /> : <Navigate to="/signup" /> }/>
         <Route path="/avengers" element={isAuthenticated ? <Avengers /> : <Navigate to="/signup" /> }/>
+       <Route
+  path="/attendaceupdations"
+  element={
+    isAuthenticated && user?.role === 'admin' ? (
+      <AttendanceStart adminId={user._id} token={localStorage.getItem('token')} />
+    ) : (
+      <Navigate to="/signup" />
+    )
+  }
+/>
+
+     <Route
+  path="/attendance-summary"
+  element={
+    isAuthenticated && user?.role === 'user' ? (
+      <AttendanceSubmit userId={user._id} token={localStorage.getItem('token')} />
+    ) : (
+      <Navigate to="/signup" />
+    )
+  }
+/>
+
+      <Route path="/attendance/history" element={isAuthenticated ? <AttendanceHistory /> : <Navigate to="/signup" />} />
 
       </Routes>
     </>

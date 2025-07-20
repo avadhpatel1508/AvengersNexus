@@ -1,39 +1,29 @@
-const jwt = require("jsonwebtoken")
-const User = require("../models/user")
-const redisClient = require("../config/redish")
+const jwt = require("jsonwebtoken");
+const User = require("../models/user");
+const redisClient = require("../config/redish");
 
+const adminMiddleware = async (req, res, next) => {
+  try {
+    const { token } = req.cookies;
+    if (!token) throw new Error("Token is not present");
 
-const adminMiddleware = async(req,res,next)=>{
+    const payload = jwt.verify(token, process.env.JWT_KEY);
 
-    try{
-        const {token} = req.cookies;
-        if(!token)
-            throw new Error("Token is not present")
+    const { _id, role } = payload;
 
-        const payload =  jwt.verify(token,process.env.JWT_KEY);
+    if (!role || role !== 'admin') throw new Error("Access denied: Admins only");
 
-        const {_id,role} = payload;
+    const isBlocked = await redisClient.exists(`token:${token}`);
+    if (isBlocked) throw new Error("Invalid Token");
 
-        if (!role || role !== 'admin') throw new Error("Access denied: Admins only");
-        const isblocked = await redisClient.exists(`token:${token}`);
-        if (isblocked) throw new Error("Invalid Token");
+    const result = await User.findById(_id);
+    if (!result) throw new Error("User doesn't exist");
 
-        const result= await User.findById(_id)
+    req.result = result;
+    next();
+  } catch (error) {
+    res.status(401).send("Error: " + error.message);
+  }
+};
 
-        if(!result)
-            throw new Error("User Doesn't exist")
-
-        //Redish ke blocklist mai to present nai hai
-
-       
-
-        req.result = result;
-
-        next();
-    }
-    catch(error){
-        res.status(401).send("Error is: "+error)
-    }
-}
-
-module.exports = adminMiddleware
+module.exports = adminMiddleware;
