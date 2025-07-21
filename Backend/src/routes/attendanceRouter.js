@@ -5,13 +5,27 @@ const userMiddleware = require('../middleware/userMiddleware');
 const Attendance = require('../models/attendance');
 const { startAttendance, submitOtp, markAbsentForAll } = require('../controllers/attendanceController');
 const attendanceController  = require('../controllers/attendanceController')
-attendanceRouter.get('/date/:date', adminMiddleware, async (req, res) => {
+attendanceRouter.get('/date/:date', userMiddleware, async (req, res) => {
   try {
-    const formattedDate = new Date(req.params.date).toISOString().split('T')[0];
-    const attendance = await Attendance.find({ date: formattedDate }).populate('user', 'firstName emailId');
-    res.status(200).json({ success: true, date: formattedDate, attendance });
+    const date = new Date(req.params.date);
+    const nextDate = new Date(date);
+    nextDate.setDate(date.getDate() + 1);
+
+    const attendance = await Attendance.find({
+      date: { $gte: date, $lt: nextDate }
+    }).populate('user', 'firstName emailId');
+
+    res.status(200).json({
+      success: true,
+      date: date.toISOString().split('T')[0],
+      attendance,
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Server error', error: err.message });
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: err.message,
+    });
   }
 });
 

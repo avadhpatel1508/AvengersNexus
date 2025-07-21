@@ -8,7 +8,7 @@ const axiosClient = axios.create({
   },
 });
 
-// 🔑 Add an interceptor to include the token
+
 axiosClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token"); // adjust storage if needed

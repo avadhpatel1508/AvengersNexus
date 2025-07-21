@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
 import axiosClient from '../utils/axiosClient';
 import { motion } from 'framer-motion';
+import AdminNavbar from '../components/AdminNavbar';
+import UserNavbar from '../components/UserNavbar';
+import { useSelector } from 'react-redux';
+import Footer from '../components/Footer';
 
 function UserMission() {
+  const user = useSelector((state) => state.auth?.user);
+
     const [missions, setMissions] = useState([]);
     const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
     const [isLoaded, setIsLoaded] = useState(false);
-    const { user } = useSelector((state) => state.auth);
+
 
     useEffect(() => {
         const fetchMission = async () => {
@@ -99,6 +104,8 @@ function UserMission() {
 
     return (
         <div className="min-h-screen bg-black text-white relative overflow-hidden">
+      {user?.role === 'admin' ? <AdminNavbar /> : <UserNavbar />}
+
             {/* Dynamic Background */}
             <div className="fixed inset-0 z-0">
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-cyan-900/20"></div>
@@ -207,6 +214,7 @@ function UserMission() {
                     100% { transform: translate(50px, 50px); }
                 }
             `}</style>
+            <Footer/>
         </div>
     );
 }

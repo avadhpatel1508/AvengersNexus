@@ -1,8 +1,14 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import axiosClient from "../utils/axiosClient";
+import AdminNavbar from '../components/AdminNavbar';
+import UserNavbar from '../components/UserNavbar';
+import { useSelector } from 'react-redux';
+import Footer from "../components/Footer";
 
 function PostUpdations() {
+  const user = useSelector((state) => state.auth?.user);
+
     const [formData, setFormData] = useState({
         title: "",
         description: "",
@@ -39,6 +45,8 @@ function PostUpdations() {
 
     return (
         <div className="min-h-screen bg-black text-white relative overflow-hidden">
+      {user?.role === 'admin' ? <AdminNavbar /> : <UserNavbar />}
+
             {/* Background Elements */}
             <div className="fixed inset-0 z-0">
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-cyan-900/20"></div>
@@ -129,6 +137,7 @@ function PostUpdations() {
                     100% { transform: translate(50px, 50px); }
                 }
             `}</style>
+            <Footer/>
         </div>
     );
 }

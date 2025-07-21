@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react';
 import axiosClient from '../utils/axiosClient';
 import { motion } from 'framer-motion';
+import AdminNavbar from '../components/AdminNavbar';
+import UserNavbar from '../components/UserNavbar';
+import { useSelector } from 'react-redux';
+import Footer from '../components/Footer';
 
 function AvengersPage() {
   const [avengers, setAvengers] = useState([]);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState('');
+
+  const user = useSelector((state) => state.auth?.user);
 
   useEffect(() => {
     const fetchAvengers = async () => {
@@ -51,6 +57,10 @@ function AvengersPage() {
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
+      {/* ✅ Dynamic Navbar */}
+      {user?.role === 'admin' ? <AdminNavbar /> : <UserNavbar />}
+      
+
       {/* Background */}
       <div className="fixed inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-cyan-900/20"></div>
@@ -79,7 +89,7 @@ function AvengersPage() {
         <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-pink-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
       </div>
 
-      {/* Page Header */}
+      {/* Header */}
       <motion.h2
         className="text-5xl md:text-7xl font-black text-center uppercase tracking-widest mt-24 mb-12 relative z-10"
         variants={itemVariants}
@@ -103,7 +113,7 @@ function AvengersPage() {
         </motion.p>
       )}
 
-      {/* Cards Grid */}
+      {/* Cards */}
       <motion.div
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto p-8 relative z-10"
         variants={containerVariants}
@@ -140,9 +150,11 @@ function AvengersPage() {
                 </p>
                 <p>
                   <span className="font-semibold text-white">🕵️ Role:</span>{' '}
-                  <span className={`capitalize font-bold ${
-                    avenger.role === 'admin' ? 'text-purple-400' : 'text-cyan-400'
-                  }`}>
+                  <span
+                    className={`capitalize font-bold ${
+                      avenger.role === 'admin' ? 'text-purple-400' : 'text-cyan-400'
+                    }`}
+                  >
                     {avenger.role}
                   </span>
                 </p>
@@ -154,7 +166,7 @@ function AvengersPage() {
         )}
       </motion.div>
 
-      {/* Custom Styles */}
+      {/* CSS Animations */}
       <style jsx>{`
         @keyframes grid-move {
           0% {
@@ -165,10 +177,9 @@ function AvengersPage() {
           }
         }
       `}</style>
+      <Footer/>
     </div>
   );
 }
 
 export default AvengersPage;
-
-

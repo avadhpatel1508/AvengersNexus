@@ -7,7 +7,7 @@ function generateOtp() {
 }
 module.exports = (io) => {
   io.on('connection', async (socket) => {
-    console.log('⚡ New client connected:', socket.id);
+    console.log(' New client connected:', socket.id);
 
     // Authenticate user from token (used for all socket events)
     try {
@@ -20,17 +20,17 @@ module.exports = (io) => {
 
       socket.user = user;
     } catch (err) {
-      console.error('❌ Socket auth error:', err.message);
+      console.error('Socket auth error:', err.message);
       socket.emit('unauthorized', { success: false, message: 'Unauthorized access' });
       socket.disconnect();
       return;
     }
 
-    // 🚀 START ATTENDANCE — Only admin
+    //START ATTENDANCE — Only admin
     socket.on("start-attendance", async ({ adminId }) => {
   try {
-    const result = await attendanceController.startAttendance(io, adminId); // ← This is critical
-    socket.emit("otp-generated", result); // Optional: reply back to admin only
+    const result = await attendanceController.startAttendance(io, adminId); 
+    socket.emit("otp-generated", result);
     socket.emit('attendance-started', { otp, sessionId, expiresIn });
 
   } catch (error) {
@@ -51,9 +51,9 @@ module.exports = (io) => {
       socket.emit('attendance-failed', { message: result.message });
     }
   } catch (err) {
-    console.error('❌ OTP submission failed:', err.message);
+    console.error(' OTP submission failed:', err.message);
     socket.emit('attendance-failed', {
-      message: '❌ Internal error. Try again.'
+      message: ' Internal error. Try again.'
     });
   }
 });
