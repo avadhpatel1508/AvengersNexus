@@ -2,15 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { initializeSocket, getSocket } from '../../socket/socket';
 import { FaBolt, FaClock } from 'react-icons/fa';
-import Footer from '../Footer'
+import Footer from '../Footer';
 import AdminNavbar from '../AdminNavbar';
 import UserNavbar from '../UserNavbar';
 import { useSelector } from 'react-redux';
 
-
-const AttendanceStart = ({ adminId, token, role }) => {
-
-  const user = useSelector((state) => state.auth?.user); // ✅ Won’t crash if auth is undefined
+const AttendanceStart = ({ adminId, token }) => {
+  const user = useSelector((state) => state.auth?.user);
 
   const [generatedOtp, setGeneratedOtp] = useState('');
   const [sessionId, setSessionId] = useState('');
@@ -20,71 +18,91 @@ const AttendanceStart = ({ adminId, token, role }) => {
   const [attendanceOver, setAttendanceOver] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
+  // Initialize socket and handle events
   useEffect(() => {
     initializeSocket(token);
     const socket = getSocket();
+    if (!socket) return;
 
-    if (socket) {
-      socket.off('otp-generated');
-      socket.off('attendance-session-failed');
+    // 🔁 Listen for session start
+    socket.on('attendance-started', ({ otp, sessionId, expiresIn }) => {
+      setGeneratedOtp(otp);
+      setSessionId(sessionId);
+      setTimer(expiresIn || 60);
+      setAttendanceStarted(true);
+      setAttendanceOver(false);
+    });
 
-      socket.on('otp-generated', (data) => {
-        setGeneratedOtp(data.otp);
-        setSessionId(data.sessionId);
-        setTimer(data.expiresIn || 60);
+    // 🔁 Listen for active session (on page refresh)
+    socket.on('active-session-data', ({ otp, sessionId, expiresAt }) => {
+      const now = Date.now();
+      const remainingTime = Math.floor((expiresAt - now) / 1000);
+
+      if (remainingTime > 0) {
+        setGeneratedOtp(otp);
+        setSessionId(sessionId);
+        setTimer(remainingTime);
         setAttendanceStarted(true);
-        setAttendanceOver(false); // Reset on new session
-      });
+        setAttendanceOver(false);
+      }
+    });
 
-      socket.on('attendance-session-failed', (err) => {
-        setError(err.message || 'Attendance session failed');
-      });
+    // 🔁 Listen for failure
+    socket.on('attendance-session-failed', (err) => {
+      setError(err.message || 'Attendance session failed');
+    });
 
-      return () => {
-        socket.off('otp-generated');
-        socket.off('attendance-session-failed');
-      };
-    }
-  }, [token]);
+    // 🔁 Emit active session check on mount
+    socket.emit('get-active-session', { adminId });
 
+    return () => {
+      socket.off('attendance-started');
+      socket.off('attendance-session-failed');
+      socket.off('active-session-data');
+    };
+  }, [token, adminId]);
+
+  // ⏳ Countdown timer
   useEffect(() => {
     if (timer > 0) {
       const countdown = setInterval(() => {
-        setTimer((t) => {
-          if (t === 1) {
-            setAttendanceOver(true);
-          }
-          return t - 1;
+        setTimer((prev) => {
+          if (prev === 1) setAttendanceOver(true);
+          return prev - 1;
         });
       }, 1000);
       return () => clearInterval(countdown);
     }
   }, [timer]);
 
+  // 🎯 Track mouse for background glow
   useEffect(() => {
     const handleMouseMove = (e) => setMousePosition({ x: e.clientX, y: e.clientY });
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
+  // ▶️ Start attendance
   const handleStartAttendance = () => {
-    try {
-      const socket = getSocket();
-      if (!socket) throw new Error('Socket not connected');
-      socket.emit('start-attendance', { adminId });
-    } catch (err) {
-      setError('Socket connection failed');
+    const socket = getSocket();
+    if (!socket) {
+      setError('Socket not connected');
+      return;
     }
+    if (attendanceStarted && !attendanceOver) {
+      setError('Session already active');
+      return;
+    }
+    socket.emit('start-attendance', { adminId });
+    setError(null);
   };
 
+  // 🔁 Animations
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.3,
-      },
+      transition: { staggerChildren: 0.1, delayChildren: 0.3 },
     },
   };
 
@@ -99,10 +117,10 @@ const AttendanceStart = ({ adminId, token, role }) => {
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
-      {/* Dynamic Navbar */}
-     {user?.role === 'admin' ? <AdminNavbar /> : <UserNavbar />}
+      {/* Navbar */}
+      {user?.role === 'admin' ? <AdminNavbar /> : <UserNavbar />}
 
-      {/* Background Effects */}
+      {/* Background Animation */}
       <div className="fixed inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-cyan-900/20"></div>
         <motion.div
@@ -113,7 +131,7 @@ const AttendanceStart = ({ adminId, token, role }) => {
         <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-pink-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
       </div>
 
-      {/* Attendance Panel */}
+      {/* Content */}
       <div className="relative z-10 p-4 sm:p-8 flex flex-col items-center justify-center min-h-screen gap-6">
         <motion.div
           className="w-full max-w-md bg-black/40 backdrop-blur-md p-6 rounded-xl border border-cyan-400/20"
@@ -167,7 +185,8 @@ const AttendanceStart = ({ adminId, token, role }) => {
           )}
         </motion.div>
       </div>
-      <Footer/>
+
+      <Footer />
     </div>
   );
 };

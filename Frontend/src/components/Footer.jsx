@@ -99,19 +99,10 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Bottom Info */}
-        <div className="text-xs text-white/50 space-y-1">
+ 
+        <div className="text-xs text-white/50">
           <p>&copy; {new Date().getFullYear()} Avengers Ops Platform. All rights reserved.</p>
-          <p>
-            Powered by
-            <span className="ml-1 text-white hover:text-cyan-300 hover:drop-shadow-[0_0_6px_cyan] transition duration-300">
-              ⚛️ React
-            </span>
-            &amp;
-            <span className="ml-1 text-white hover:text-purple-300 hover:drop-shadow-[0_0_6px_purple] transition duration-300">
-              🚀 Node.js
-            </span>
-          </p>
+         
         </div>
       </div>
     </motion.footer>

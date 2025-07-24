@@ -1,19 +1,21 @@
+// same imports
 import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 import { initializeSocket, getSocket } from '../../socket/socket';
 import { motion } from 'framer-motion';
 import { FaShieldAlt } from 'react-icons/fa';
 import AdminNavbar from '../AdminNavbar';
 import UserNavbar from '../UserNavbar';
-import { useSelector } from 'react-redux';
 import Footer from '../Footer';
-// Mock attendance history data (replace with actual API data)
-const mockHistory = [
-  { id: 1, date: '2025-07-19 10:00 AM', sessionId: 'session-123', status: 'Success', otp: '3921' },
-  { id: 2, date: '2025-07-18 09:30 AM', sessionId: 'session-124', status: 'Failed', otp: '4832' },
-  { id: 3, date: '2025-07-17 11:15 AM', sessionId: 'session-125', status: 'Success', otp: '7503' },
-];
+import { useSelector } from 'react-redux';
 
-const AttendanceSubmit = ({ userId, token, role }) => {
+
+const AttendanceSubmit = () => {
+  const user = useSelector((state) => state.auth?.user);
+  const token = useSelector((state) => state.auth?.token);
+  const userId = user?._id;
+  const role = user?.role;
+  const [attendanceHistory, setAttendanceHistory] = useState([]);
   const [otp, setOtp] = useState('');
   const [receivedOtp, setReceivedOtp] = useState('');
   const [otpSession, setOtpSession] = useState('');
@@ -24,13 +26,10 @@ const AttendanceSubmit = ({ userId, token, role }) => {
   const [error, setError] = useState('');
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
-  // Initialize socket
   useEffect(() => {
     initializeSocket(token);
     const socket = getSocket();
     if (!socket) return;
-
-    console.log("✅ Socket connected:", socket.id);
 
     socket.on('attendance-started', (data) => {
       setReceivedOtp(data.otp);
@@ -51,14 +50,29 @@ const AttendanceSubmit = ({ userId, token, role }) => {
       setError(err.message || 'Failed to mark attendance.');
     });
 
+    socket.emit('get-active-session');
+
+    socket.on('active-session-data', ({ otp, sessionId, expiresAt }) => {
+      const timeLeft = Math.floor((expiresAt - Date.now()) / 1000);
+      if (timeLeft > 0) {
+        setReceivedOtp(otp);
+        setOtpSession(sessionId);
+        setOtpActive(true);
+        setTimer(timeLeft);
+        setMessage('');
+        setError('');
+        setSubmitted(false);
+      }
+    });
+
     return () => {
       socket.off('attendance-started');
       socket.off('attendance-success');
       socket.off('attendance-failed');
+      socket.off('active-session-data');
     };
   }, [token]);
 
-  // Countdown timer
   useEffect(() => {
     if (timer > 0) {
       const interval = setInterval(() => setTimer((prev) => prev - 1), 1000);
@@ -68,14 +82,36 @@ const AttendanceSubmit = ({ userId, token, role }) => {
     }
   }, [timer]);
 
-  // Handle mouse movement for background effect
   useEffect(() => {
     const handleMouseMove = (e) => setMousePosition({ x: e.clientX, y: e.clientY });
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  // Handle OTP submit
+  useEffect(() => {
+    const fetchAttendance = async () => {
+      try {
+        const { data } = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/attendance/user/${userId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        if (data?.success) {
+          setAttendanceHistory(data.attendance || []);
+        }
+      } catch (err) {
+        console.error("❌ Error fetching attendance:", err.response?.data || err.message);
+      }
+    };
+
+    if (userId && token) {
+      fetchAttendance();
+    }
+  }, [userId, token]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const socket = getSocket();
@@ -95,10 +131,7 @@ const AttendanceSubmit = ({ userId, token, role }) => {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.3,
-      },
+      transition: { staggerChildren: 0.1, delayChildren: 0.3 },
     },
   };
 
@@ -107,16 +140,23 @@ const AttendanceSubmit = ({ userId, token, role }) => {
     visible: {
       y: 0,
       opacity: 1,
-      transition: {
-        duration: 0.6,
-        ease: 'easeOut',
-      },
+      transition: { duration: 0.6, ease: 'easeOut' },
     },
+  };
+
+  // 🧠 Helper to format date & time
+  const formatDateTime = (isoDate) => {
+    const dateObj = new Date(isoDate);
+    const date = dateObj.toLocaleDateString('en-IN'); // dd/mm/yyyy
+    const time = dateObj.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    return { date, time };
   };
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
-      {/* Dynamic Navbar */}
       <div className="relative z-20">
         {role === 'admin' ? <AdminNavbar /> : <UserNavbar />}
       </div>
@@ -133,21 +173,12 @@ const AttendanceSubmit = ({ userId, token, role }) => {
         <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-pink-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
       </div>
 
-      {/* Main Form & History */}
+      {/* Content */}
       <div className="relative z-10 p-4 sm:p-8 flex flex-col items-center justify-center min-h-screen gap-6">
-        <motion.div
-          className="w-full max-w-md bg-black/40 backdrop-blur-md p-6 rounded-xl border border-cyan-400/20"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <motion.h2
-            className="text-3xl sm:text-4xl md:text-5xl font-black text-center uppercase tracking-widest mb-6"
-            variants={itemVariants}
-          >
-            <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-              Captain America Attendance
-            </span>
+        {/* OTP Box */}
+        <motion.div className="w-full max-w-md bg-black/40 backdrop-blur-md p-6 rounded-xl border border-cyan-400/20" variants={containerVariants} initial="hidden" animate="visible">
+          <motion.h2 className="text-4xl font-black text-center uppercase tracking-widest mb-6 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent" variants={itemVariants}>
+            Captain America Attendance
           </motion.h2>
 
           {!otpActive ? (
@@ -189,56 +220,49 @@ const AttendanceSubmit = ({ userId, token, role }) => {
           )}
         </motion.div>
 
-        {/* Attendance History Section */}
-        <motion.div
-          className="w-full max-w-4xl bg-black/40 backdrop-blur-md p-6 rounded-xl border border-cyan-400/20"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <motion.h3
-            className="text-xl sm:text-2xl font-bold text-center text-white mb-6"
-            variants={itemVariants}
-          >
+        {/* Attendance History */}
+        <motion.div className="w-full max-w-4xl bg-black/40 backdrop-blur-md p-6 rounded-xl border border-cyan-400/20" variants={containerVariants} initial="hidden" animate="visible">
+          <motion.h3 className="text-2xl font-bold text-center text-white mb-6" variants={itemVariants}>
             Attendance History
           </motion.h3>
           <div className="overflow-x-auto">
             <table className="w-full table-auto text-sm sm:text-base">
               <thead>
                 <tr className="bg-cyan-900/50 text-white">
-                  <th className="px-2 py-2 sm:px-4 sm:py-2">Date</th>
-                  <th className="px-2 py-2 sm:px-4 sm:py-2">Session ID</th>
-                  <th className="px-2 py-2 sm:px-4 sm:py-2">Status</th>
-                  <th className="px-2 py-2 sm:px-4 sm:py-2">OTP Used</th>
+                  <th className="px-4 py-2">Date</th>
+                  <th className="px-4 py-2">Time</th>
+                  <th className="px-4 py-2">Session ID</th>
+                  <th className="px-4 py-2">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {mockHistory.map((record) => (
-                  <motion.tr
-                    key={record.id}
-                    className="border-b border-cyan-400/20 hover:bg-cyan-900/20"
-                    variants={itemVariants}
-                  >
-                    <td className="px-2 py-2 sm:px-4 sm:py-2 text-gray-300">{record.date}</td>
-                    <td className="px-2 py-2 sm:px-4 sm:py-2 text-gray-300">{record.sessionId}</td>
-                    <td className="px-2 py-2 sm:px-4 sm:py-2">
-                      <span
-                        className={`font-semibold ${
-                          record.status === 'Success' ? 'text-green-400' : 'text-red-400'
-                        }`}
-                      >
-                        {record.status}
-                      </span>
-                    </td>
-                    <td className="px-2 py-2 sm:px-4 sm:py-2 text-gray-300">{record.otp}</td>
-                  </motion.tr>
-                ))}
-              </tbody>
+  {attendanceHistory.length === 0 ? (
+    <tr>
+      <td colSpan="4" className="text-center text-red-400 py-4">
+        No attendance records found
+      </td>
+    </tr>
+  ) : (
+    attendanceHistory.map((record, index) => {
+      const { date, time } = formatDateTime(record.date);
+      return (
+        <tr key={record._id || index}>
+          <td>{date}</td>
+          <td>{time}</td>
+          <td>{record.otpSessionId}</td>
+          <td>{record.status}</td>
+        </tr>
+      );
+    })
+  )}
+</tbody>
+
             </table>
           </div>
         </motion.div>
       </div>
-      <Footer/>
+
+      <Footer />
     </div>
   );
 };

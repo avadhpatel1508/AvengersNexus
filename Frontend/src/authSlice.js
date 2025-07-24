@@ -30,12 +30,15 @@ export const loginUser = createAsyncThunk(
   async (credentials, { rejectWithValue }) => {
     try {
       const response = await axiosClient.post('/user/login', credentials);
-      return response.data.user;
+console.log("🎯 Login API response:", response.data);
+      const { user, token } = response.data;
+      return { user, token }; // ✅ return both
     } catch (error) {
       return rejectWithValue(parseAxiosError(error));
     }
   }
 );
+
 
 // Check Auth
 export const checkAuth = createAsyncThunk(
@@ -43,73 +46,78 @@ export const checkAuth = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const { data } = await axiosClient.get('/user/check', {
-        withCredentials: true, // ensures cookies (token) are sent
+        withCredentials: true,
       });
-
-      // Only return user if backend confirmed token is valid and not blocked
       return data.user;
     } catch (error) {
       return rejectWithValue(parseAxiosError(error));
     }
   }
 );
+
 // Logout User
 export const logoutUser = createAsyncThunk(
   'auth/logout',
   async (_, { rejectWithValue }) => {
     try {
-      await axiosClient.post('/user/logout'); // Endpoint that clears the cookie on the server
+      await axiosClient.post('/user/logout');
       return true;
     } catch (error) {
       return rejectWithValue(parseAxiosError(error));
     }
   }
-)
+);
 
 // Auth Slice
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
     user: null,
-    isAuthenticated: false,
-    loading: false,
+    isAuthenticated: null, // null = unknown; true/false = known
+    loading: true,         // true initially while checking auth
     error: null,
   },
-  reducers: {},
+  reducers: {
+    resetAuthError: (state) => {
+      state.error = null;
+    },
+  },
   extraReducers: (builder) => {
     builder
-      // Register User
+
+      // Register
       .addCase(registerUser.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.isAuthenticated = !!action.payload;
         state.user = action.payload;
+        state.isAuthenticated = !!action.payload;
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || { message: 'Something went wrong' };
-        state.isAuthenticated = false;
         state.user = null;
+        state.isAuthenticated = false;
+        state.error = action.payload || { message: 'Something went wrong' };
       })
 
-      // Login User
+      // Login
       .addCase(loginUser.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.isAuthenticated = !!action.payload;
         state.user = action.payload;
+         state.token = action.payload.token;
+        state.isAuthenticated = !!action.payload;
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || { message: 'Something went wrong' };
-        state.isAuthenticated = false;
         state.user = null;
+        state.isAuthenticated = false;
+        state.error = action.payload || { message: 'Something went wrong' };
       })
 
       // Check Auth
@@ -119,35 +127,35 @@ const authSlice = createSlice({
       })
       .addCase(checkAuth.fulfilled, (state, action) => {
         state.loading = false;
-        state.isAuthenticated = !!action.payload;
         state.user = action.payload;
+        state.isAuthenticated = !!action.payload;
       })
       .addCase(checkAuth.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || { message: 'Something went wrong' };
-        state.isAuthenticated = false;
         state.user = null;
+        state.isAuthenticated = false;
+        state.error = action.payload || { message: 'Something went wrong' };
       })
 
-      // Logout User
-            // Logout User
+      // Logout
       .addCase(logoutUser.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(logoutUser.fulfilled, (state) => {  // ✅ Corrected with dot
+      .addCase(logoutUser.fulfilled, (state) => {
         state.loading = false;
-        state.isAuthenticated = false;
         state.user = null;
+        state.isAuthenticated = false;
       })
       .addCase(logoutUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || { message: 'Something went wrong' };
-        state.isAuthenticated = false;
         state.user = null;
+        state.isAuthenticated = false;
+        state.error = action.payload || { message: 'Something went wrong' };
       });
-
   },
 });
+
+export const { resetAuthError } = authSlice.actions;
 
 export default authSlice.reducer;

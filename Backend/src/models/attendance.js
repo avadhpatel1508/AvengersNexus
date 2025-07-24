@@ -14,6 +14,7 @@ const attendanceSchema = new Schema({
   status: {
     type: String,
     enum: ['Present', 'Absent'],
+    default: 'Present',
     required: true
   },
   otpSessionId: {
@@ -22,8 +23,12 @@ const attendanceSchema = new Schema({
 }, {
   timestamps: true
 });
+attendanceSchema.pre('validate', function (next) {
+  this.date = new Date(this.date.setHours(0, 0, 0, 0));
+  next();
+});
 
-attendanceSchema.index({ user: 1, date: 1 }, { unique: true }); // Prevents duplicate entries per user per date
+attendanceSchema.index({ user: 1, date: 1 }, { unique: true });
 
 const Attendance = mongoose.model('attendance', attendanceSchema);
 module.exports = Attendance;

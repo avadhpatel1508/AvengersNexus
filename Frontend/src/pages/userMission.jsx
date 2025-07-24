@@ -103,7 +103,7 @@ function UserMission() {
     };
 
     return (
-        <div className="min-h-screen bg-black text-white relative overflow-hidden">
+  <div className="min-h-screen flex flex-col bg-black text-white relative overflow-hidden">
       {user?.role === 'admin' ? <AdminNavbar /> : <UserNavbar />}
 
             {/* Dynamic Background */}
@@ -129,7 +129,8 @@ function UserMission() {
             </div>
 
             {/* Main Content */}
-            <div className="relative z-10 p-8">
+            <div className="min-h-screen flex flex-col bg-black text-white relative overflow-hidden">
+
                 <motion.h2
                     className="text-5xl md:text-7xl font-black text-center uppercase tracking-widest mb-12"
                     variants={itemVariants}

@@ -3,8 +3,9 @@ const attendanceRouter = express.Router();
 const adminMiddleware = require('../middleware/adminMiddleware');
 const userMiddleware = require('../middleware/userMiddleware');
 const Attendance = require('../models/attendance');
-const { startAttendance, submitOtp, markAbsentForAll } = require('../controllers/attendanceController');
-const attendanceController  = require('../controllers/attendanceController')
+const attendanceController = require('../controllers/attendanceController');
+
+// 📅 Get attendance for a specific date (Admin/User)
 attendanceRouter.get('/date/:date', userMiddleware, async (req, res) => {
   try {
     const date = new Date(req.params.date);
@@ -29,7 +30,8 @@ attendanceRouter.get('/date/:date', userMiddleware, async (req, res) => {
   }
 });
 
-attendanceRouter.get('/user/:userId', userMiddleware, async (req, res) => {
+// 👤 Get all attendance for a specific user
+attendanceRouter.get('/:userId', userMiddleware, async (req, res) => {
   try {
     const { userId } = req.params;
     if (req.result._id.toString() !== userId && req.result.role !== 'admin') {
@@ -42,39 +44,47 @@ attendanceRouter.get('/user/:userId', userMiddleware, async (req, res) => {
   }
 });
 
+// 🚀 Start a new attendance session (Admin)
 attendanceRouter.post('/start', adminMiddleware, async (req, res) => {
   try {
-    const result = await startAttendance(req.app.get('io'), req.result._id);
+    const result = await attendanceController.startAttendance(req.app.get('io'), req.result._id);
     res.status(200).json(result);
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }
 });
 
+// ✅ Submit OTP (User)
 attendanceRouter.post('/submit', userMiddleware, async (req, res) => {
   const { enteredOtp, sessionId } = req.body;
-  const result = await submitOtp(req.result._id, enteredOtp, sessionId);
+  const result = await attendanceController.submitOtp(req.result._id, enteredOtp, sessionId);
   res.status(result.success ? 200 : 400).json(result);
 });
 
+// ❌ Forcefully mark absentees (Admin)
 attendanceRouter.post('/markAbsent', adminMiddleware, async (req, res) => {
   try {
-    await markAbsentForAll(req.body.sessionId);
+    await attendanceController.markAbsentForAll(req.body.sessionId);
     res.status(200).json({ success: true, message: 'Absentees marked' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-attendanceRouter.post('/mark', async (req, res) => {
-  const userId = req.user._id;
+
+// 🧠 Redundant endpoint for flexibility (Optional)
+attendanceRouter.post('/mark', userMiddleware, async (req, res) => {
+  const userId = req.result._id;
   const { otp, sessionId } = req.body;
 
   const result = await attendanceController.submitOtp(userId, otp, sessionId);
-  if (result.success) {
-    return res.status(200).json({ message: result.message });
-  } else {
-    return res.status(400).json({ message: result.message });
-  }
+  res.status(result.success ? 200 : 400).json({ message: result.message });
 });
 
+// 🔍 Check if an active session is running
+attendanceRouter.get('/check-active', async (req, res) => {
+  return attendanceController.checkactive(req, res);
+});
+attendanceRouter.get('/live-attendees', async (req, res) => {
+  return attendanceController.getLiveAttendees(req, res);
+});
 module.exports = attendanceRouter;
