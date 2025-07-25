@@ -5,6 +5,7 @@ import AdminNavbar from '../components/AdminNavbar';
 import UserNavbar from '../components/UserNavbar';
 import { useSelector } from 'react-redux';
 import Footer from '../components/Footer';
+
 function MissionsPage() {
   const user = useSelector((state) => state.auth?.user);
 
@@ -12,7 +13,6 @@ function MissionsPage() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState('');
-  
 
   useEffect(() => {
     const fetchMissions = async () => {
@@ -41,7 +41,7 @@ function MissionsPage() {
 
         setMissions(missionsWithAvengers);
         if (missionsWithAvengers.length === 0) {
-          setError('No missions found in the database.');
+          setError('No missions found.');
         }
       } catch (error) {
         console.error('Error fetching missions:', error.response?.data || error.message);
@@ -51,12 +51,8 @@ function MissionsPage() {
         setIsLoaded(true);
       }
     };
-    
-
-    
 
     fetchMissions();
-   
 
     const handleMouseMove = (e) => {
       setMousePosition({ x: e.clientX, y: e.clientY });
@@ -88,7 +84,7 @@ function MissionsPage() {
 
       {/* Dynamic Background */}
       <div className="fixed inset-0 z-0">
-        {/* ... gradient background omitted for brevity */}
+        {/* background can go here */}
       </div>
 
       {/* Preloader */}
@@ -100,7 +96,8 @@ function MissionsPage() {
           animate="visible"
           exit="exit"
         >
-          {/* ... animated preloader content omitted for brevity */}
+          {/* loading spinner or animation */}
+          <p className="text-xl text-cyan-400 animate-pulse">Loading Missions...</p>
         </motion.div>
       )}
 
@@ -119,7 +116,7 @@ function MissionsPage() {
 
         {error && (
           <motion.p
-            className="text-center text-sm text-red-400 mb-8"
+            className="text-center text-lg text-red-400 mb-8"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
@@ -128,27 +125,19 @@ function MissionsPage() {
           </motion.p>
         )}
 
-        <motion.div
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto"
-          variants={containerVariants}
-          initial="hidden"
-          animate={isLoaded ? 'visible' : 'hidden'}
-        >
-          {missions.length === 0 && isLoaded ? (
-            <motion.p
-              className="col-span-full text-center text-xl text-gray-400"
-              variants={itemVariants}
-            >
-              No missions found.
-            </motion.p>
-          ) : (
-            missions.map((mission) => (
+        {!error && (
+          <motion.div
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto"
+            variants={containerVariants}
+            initial="hidden"
+            animate={isLoaded ? 'visible' : 'hidden'}
+          >
+            {missions.map((mission) => (
               <motion.div
                 key={mission._id}
                 className="relative bg-black/40 backdrop-blur-md rounded-2xl p-6 border border-cyan-400/30 hover:scale-105 transition-transform duration-300 group"
                 variants={itemVariants}
               >
-                {/* ... individual mission card content */}
                 <h3 className="text-2xl font-bold mb-3 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
                   {mission.title}
                 </h3>
@@ -156,19 +145,26 @@ function MissionsPage() {
                 <div className="text-sm space-y-2">
                   <p><strong>📍 Location:</strong> {mission.Location}</p>
                   <p><strong>⚙️ Difficulty:</strong> {mission.difficulty}</p>
-                  <p><strong>🦸 Assigned Avengers:</strong> {mission.avengersAssigned.map((a) => a.firstName).join(', ') || 'None assigned'}</p>
-                  <p><strong>🚩 Status:</strong> {mission.isCompleted ? (
-                    <span className="text-green-400 font-bold">Completed</span>
-                  ) : (
-                    <span className="text-yellow-400 font-bold">In Progress</span>
-                  )}</p>
+                  <p>
+                    <strong>🦸 Assigned Avengers:</strong>{' '}
+                    {mission.avengersAssigned.map((a) => a.firstName).join(', ') || 'None assigned'}
+                  </p>
+                  <p>
+                    <strong>🚩 Status:</strong>{' '}
+                    {mission.isCompleted ? (
+                      <span className="text-green-400 font-bold">Completed</span>
+                    ) : (
+                      <span className="text-yellow-400 font-bold">In Progress</span>
+                    )}
+                  </p>
                 </div>
               </motion.div>
-            ))
-          )}
-        </motion.div>
+            ))}
+          </motion.div>
+        )}
       </div>
-      <Footer/>
+
+      <Footer />
     </div>
   );
 }

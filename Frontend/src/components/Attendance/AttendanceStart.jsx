@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { initializeSocket, getSocket } from '../../socket/socket';
-import { FaBolt, FaClock } from 'react-icons/fa';
+import { FaBolt, FaClock, FaUserCheck } from 'react-icons/fa';
 import Footer from '../Footer';
 import AdminNavbar from '../AdminNavbar';
 import UserNavbar from '../UserNavbar';
@@ -17,23 +17,28 @@ const AttendanceStart = ({ adminId, token }) => {
   const [attendanceStarted, setAttendanceStarted] = useState(false);
   const [attendanceOver, setAttendanceOver] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [liveAttendees, setLiveAttendees] = useState([]);
 
-  // Initialize socket and handle events
   useEffect(() => {
     initializeSocket(token);
     const socket = getSocket();
     if (!socket) return;
-
-    // 🔁 Listen for session start
+    const handleUserAttended = ({ userId, name, email }) => {
+    console.log('👥 Received user-attended:', { userId, name, email });
+    setLiveAttendees((prev) => {
+      if (prev.find((a) => a.userId === userId)) return prev;
+      return [...prev, { userId, name, email }];
+    });
+  };
     socket.on('attendance-started', ({ otp, sessionId, expiresIn }) => {
       setGeneratedOtp(otp);
       setSessionId(sessionId);
       setTimer(expiresIn || 60);
       setAttendanceStarted(true);
       setAttendanceOver(false);
+      setLiveAttendees([]); // Reset attendees on new session
     });
 
-    // 🔁 Listen for active session (on page refresh)
     socket.on('active-session-data', ({ otp, sessionId, expiresAt }) => {
       const now = Date.now();
       const remainingTime = Math.floor((expiresAt - now) / 1000);
@@ -47,22 +52,22 @@ const AttendanceStart = ({ adminId, token }) => {
       }
     });
 
-    // 🔁 Listen for failure
+    socket.on('user-attended', handleUserAttended);
+
     socket.on('attendance-session-failed', (err) => {
       setError(err.message || 'Attendance session failed');
     });
-
-    // 🔁 Emit active session check on mount
+  
     socket.emit('get-active-session', { adminId });
 
     return () => {
       socket.off('attendance-started');
       socket.off('attendance-session-failed');
       socket.off('active-session-data');
+      socket.off('user-attended', handleUserAttended);
     };
   }, [token, adminId]);
 
-  // ⏳ Countdown timer
   useEffect(() => {
     if (timer > 0) {
       const countdown = setInterval(() => {
@@ -75,14 +80,12 @@ const AttendanceStart = ({ adminId, token }) => {
     }
   }, [timer]);
 
-  // 🎯 Track mouse for background glow
   useEffect(() => {
     const handleMouseMove = (e) => setMousePosition({ x: e.clientX, y: e.clientY });
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  // ▶️ Start attendance
   const handleStartAttendance = () => {
     const socket = getSocket();
     if (!socket) {
@@ -97,7 +100,6 @@ const AttendanceStart = ({ adminId, token }) => {
     setError(null);
   };
 
-  // 🔁 Animations
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -117,10 +119,9 @@ const AttendanceStart = ({ adminId, token }) => {
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
-      {/* Navbar */}
       {user?.role === 'admin' ? <AdminNavbar /> : <UserNavbar />}
 
-      {/* Background Animation */}
+      {/* Background Glow */}
       <div className="fixed inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-cyan-900/20"></div>
         <motion.div
@@ -184,6 +185,26 @@ const AttendanceStart = ({ adminId, token }) => {
             </motion.p>
           )}
         </motion.div>
+
+        {/* Live Attendee List */}
+      {liveAttendees.length > 0 && (
+  <motion.div
+    className="bg-slate-800 mt-4 p-4 rounded-xl shadow-xl border border-cyan-400"
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+  >
+    <h3 className="text-xl font-bold text-cyan-300 mb-2">Live Attendees:</h3>
+    <ul className="space-y-1 max-h-60 overflow-y-auto">
+      {liveAttendees.map((att) => (
+        <li key={att.userId} className="text-white">
+          ✅ {att.name} <span className="text-gray-400">({att.email})</span>
+        </li>
+      ))}
+    </ul>
+  </motion.div>
+)}
+
+
       </div>
 
       <Footer />

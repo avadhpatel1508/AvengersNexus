@@ -3,9 +3,10 @@ const User = require('../models/user');
 const redisClient = require('../config/redish');
 const { v4: uuidv4 } = require('uuid');
 const generateOtp = require('../utils/generateOtp');
+const { io } = require('../socket/attendanceSocket');
 
 // START ATTENDANCE (ADMIN)
-const startAttendance = async (io, adminId) => {
+const startAttendance = async (io, adminId) => {  
   try {
     const otp = generateOtp();
     const sessionId = uuidv4();
@@ -34,7 +35,7 @@ const startAttendance = async (io, adminId) => {
 };
 
 // SUBMIT OTP (USER)
-const submitOtp = async (userId, enteredOtp, sessionId) => {
+const submitOtp = async (userId, enteredOtp, sessionId, io) => {
   try {
     const storedOtp = await redisClient.get(`otp:${sessionId}`);
     if (!storedOtp) return { success: false, message: 'OTP expired' };
@@ -45,6 +46,10 @@ const submitOtp = async (userId, enteredOtp, sessionId) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    const user = await User.findById(userId); // ✅ make sure this is populated
+
+    if (!user) return { success: false, message: 'User not found' };
+
     const existing = await Attendance.findOne({ user: userId, date: today });
 
     if (existing) {
@@ -52,6 +57,15 @@ const submitOtp = async (userId, enteredOtp, sessionId) => {
         existing.status = 'Present';
         existing.otpSessionId = sessionId;
         await existing.save();
+
+      io.to(sessionId).emit('user-attended', {
+        userId: user._id,
+        name: user.firstName,
+        email: user.emailId,
+      });
+
+
+
         return { success: true, message: 'Marked present (updated from Absent)' };
       }
       return { success: false, message: 'Attendance already marked' };
@@ -61,7 +75,13 @@ const submitOtp = async (userId, enteredOtp, sessionId) => {
       user: userId,
       date: today,
       status: 'Present',
-      otpSessionId: sessionId
+      otpSessionId: sessionId,
+    });
+
+    io.to(sessionId).emit('user-attended', {
+      userId: user._id,
+      name: user.firstName,
+      email: user.emailId,
     });
 
     return { success: true, message: 'Marked present' };
@@ -70,6 +90,8 @@ const submitOtp = async (userId, enteredOtp, sessionId) => {
     return { success: false, message: 'Internal server error' };
   }
 };
+
+
 
 // MARK ABSENT FOR ALL (after timeout)
 const markAbsentForAll = async (sessionId) => {

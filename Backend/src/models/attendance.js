@@ -14,7 +14,7 @@ const attendanceSchema = new Schema({
   status: {
     type: String,
     enum: ['Present', 'Absent'],
-    default: 'Present',
+    default: 'Absent',
     required: true
   },
   otpSessionId: {

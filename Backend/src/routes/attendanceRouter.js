@@ -8,17 +8,18 @@ const attendanceController = require('../controllers/attendanceController');
 // 📅 Get attendance for a specific date (Admin/User)
 attendanceRouter.get('/date/:date', userMiddleware, async (req, res) => {
   try {
-    const date = new Date(req.params.date);
-    const nextDate = new Date(date);
-    nextDate.setDate(date.getDate() + 1);
+    const selectedDate = new Date(req.params.date);
+
+    const startOfDay = new Date(selectedDate.setUTCHours(0, 0, 0, 0));
+    const endOfDay = new Date(selectedDate.setUTCHours(23, 59, 59, 999));
 
     const attendance = await Attendance.find({
-      date: { $gte: date, $lt: nextDate }
+      date: { $gte: startOfDay, $lte: endOfDay }
     }).populate('user', 'firstName emailId');
 
     res.status(200).json({
       success: true,
-      date: date.toISOString().split('T')[0],
+      date: startOfDay.toISOString().split('T')[0],
       attendance,
     });
   } catch (err) {
@@ -29,6 +30,7 @@ attendanceRouter.get('/date/:date', userMiddleware, async (req, res) => {
     });
   }
 });
+
 
 // 👤 Get all attendance for a specific user
 attendanceRouter.get('/:userId', userMiddleware, async (req, res) => {
@@ -84,7 +86,40 @@ attendanceRouter.post('/mark', userMiddleware, async (req, res) => {
 attendanceRouter.get('/check-active', async (req, res) => {
   return attendanceController.checkactive(req, res);
 });
-attendanceRouter.get('/live-attendees', async (req, res) => {
-  return attendanceController.getLiveAttendees(req, res);
+attendanceRouter.get('/live-attendees', userMiddleware, async (req, res) => {
+  try {
+    const now = new Date();
+
+    const startOfToday = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      0, 0, 0, 0
+    ));
+
+    const endOfToday = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      23, 59, 59, 999
+    ));
+
+    const liveAttendance = await Attendance.find({
+      date: { $gte: startOfToday, $lte: endOfToday },
+    }).populate('user', 'firstName emailId');
+
+    res.status(200).json({
+      success: true,
+      date: startOfToday.toISOString().split('T')[0],
+      attendees: liveAttendance,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: err.message,
+    });
+  }
 });
+
 module.exports = attendanceRouter;
