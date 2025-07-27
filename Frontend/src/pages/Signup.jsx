@@ -1,4 +1,3 @@
-// --- Updated Signup.jsx ---
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,6 +6,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, NavLink } from 'react-router';
 import { registerUser } from '../authSlice';
 import axiosClient from '../utils/axiosClient';
+// import { toast } from 'react-toastify';
+// import 'react-toastify/dist/ReactToastify.css';
 
 const signupSchema = z.object({
   firstName: z.string().min(3, "Minimum character should be 3"),
@@ -41,13 +42,26 @@ function Signup() {
     }
   }, [isAuthenticated, navigate]);
 
-  const onSubmit = (data) => {
-    if (!isEmailVerified) {
-      alert('Please verify your email before signing up.');
-      return;
+  const onSubmit = async (data) => {
+  if (!isEmailVerified) {
+    alert('Please verify your email before signing up.');
+    return;
+  }
+  try {
+    const resultAction = await dispatch(registerUser(data));
+    if (registerUser.fulfilled.match(resultAction)) {
+      alert("✅ Account created successfully!");
+      navigate('/login'); // Redirect to login instead of home
+    } else {
+      const errMsg = resultAction.payload?.message || "Signup failed.";
+      alert(`❌ ${errMsg}`);
     }
-    dispatch(registerUser(data));
-  };
+  } catch (err) {
+    console.error("Signup error:", err);
+    alert("❌ Something went wrong.");
+  }
+};
+
 
   const sendOtp = async () => {
     try {

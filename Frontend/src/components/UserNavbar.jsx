@@ -94,6 +94,7 @@ function UserNavbar() {
                                 <li><NavLink to="/attendance-summary" className="block px-4 py-2 hover:bg-cyan-600/20 transition-colors">Attendance</NavLink></li>
                                 <li><NavLink to="/your-missions" className="block px-4 py-2 hover:bg-cyan-600/20 transition-colors">Your Missions</NavLink></li>
                                 <li><button onClick={handleLogout} className="block w-full text-left px-4 py-2 hover:bg-red-600/20 transition-colors">Logout</button></li>
+                                
                             </ul>
                         </div>
                     </div>

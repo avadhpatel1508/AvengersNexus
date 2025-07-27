@@ -10,7 +10,8 @@ const {
   getMissionById,
   getAllMission,
   getCompletedMissionsByUser,
-  completeMissionById // ✅ imported correctly
+  completeMissionById,
+  getRewardsByUser
 } = require('../controllers/userMission');
 
 // Admin routes
@@ -27,5 +28,5 @@ missionRouter.get('/missionCompletedByUser', userMiddleware, getCompletedMission
 
 // Dynamic route should be last
 missionRouter.get('/:id', userMiddleware, getMissionById);
-
+missionRouter.get('/getRewardsByUser/:userId', getRewardsByUser )
 module.exports = missionRouter;

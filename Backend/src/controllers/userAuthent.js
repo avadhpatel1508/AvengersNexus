@@ -15,53 +15,69 @@ const generateToken = (user) => {
 };
 
 // -------------------- Register --------------------
-const register = async (req, res) => {
+const SendOtpSignup = async (req, res) => {
+  const { emailId } = req.body;
+  const normalizedEmail = emailId.trim().toLowerCase();
+  const otp = Math.floor(1000 + Math.random() * 9000).toString();
+
   try {
-    validate(req.body);
-    const { firstName, emailId, passWord } = req.body;
+    await redisClient.set(`otp:${normalizedEmail}`, otp, { EX: 300 }); // expires in 5 min
+    await sendOtpMail(normalizedEmail, otp);
 
-    const normalizedEmail = emailId.trim().toLowerCase();
-
-    // ✅ Check if this email has been verified via OTP
-    const isVerified = await redisClient.get(`verified:${normalizedEmail}`);
-    if (isVerified !== "true") {
-      throw new Error("Please verify your email with OTP before registering.");
-    }
-
-    // ✅ Proceed with password hashing and user creation
-    const hashedPassword = await bcrypt.hash(passWord, 10);
-    const user = await User.create({
-      ...req.body,
-      emailId: normalizedEmail,
-      passWord: hashedPassword,
-    });
-
-    // ✅ Generate and send auth token
-    const token = generateToken(user);
-    res.cookie("token", token, {
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      httpOnly: true,
-      sameSite: "lax",
-      secure: false,
-    });
-
-    // ✅ Cleanup: remove verification flag from Redis
-    await redisClient.del(`verified:${normalizedEmail}`);
-
-    res.status(201).json({
-      user: {
-        firstName: user.firstName,
-        emailId: user.emailId,
-        _id: user._id,
-      },
-      message: "Register successfully",
-    });
+    console.log("OTP sent to:", normalizedEmail, "=>", otp);
+    res.status(200).json({ message: "OTP sent" });
   } catch (err) {
-    console.error("Register Error:", err.message);
-    res.status(400).send("Error: " + err.message);
+    console.error("OTP Send Error:", err.message);
+    res.status(500).json({ error: "Error sending OTP" });
   }
 };
 
+// STEP 2: Verify OTP
+const VerifyOtpSignup = async (req, res) => {
+  const { emailId, otp } = req.body;
+  const normalizedEmail = emailId.trim().toLowerCase();
+
+  try {
+    const storedOtp = await redisClient.get(`otp:${normalizedEmail}`);
+    if (storedOtp === otp) {
+      await redisClient.del(`otp:${normalizedEmail}`);
+      await redisClient.set(`verified:${normalizedEmail}`, "true", { EX: 600 }); // valid for 10 min
+      return res.status(200).json({ verified: true });
+    } else {
+      return res.status(400).json({ verified: false, error: "Invalid OTP" });
+    }
+  } catch (err) {
+    console.error("OTP Verification Error:", err.message);
+    return res.status(500).json({ error: "OTP verification failed" });
+  }
+};
+
+// STEP 3: Register User
+const register = async (req, res) => {
+  const { firstName, emailId, passWord } = req.body;
+  const normalizedEmail = emailId.trim().toLowerCase();
+
+  try {
+    const isVerified = await redisClient.get(`verified:${normalizedEmail}`);
+    if (isVerified !== "true") {
+      return res.status(400).json({ message: "Please verify OTP before registering." });
+    }
+
+    const existingUser = await User.findOne({ emailId: normalizedEmail });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    const newUser = new User({ firstName, emailId: normalizedEmail, passWord });
+    await newUser.save();
+    await redisClient.del(`verified:${normalizedEmail}`);
+
+    res.status(201).json({ message: "User registered successfully" });
+  } catch (err) {
+    console.error("Registration Error:", err.message);
+    res.status(500).json({ message: "Registration failed" });
+  }
+}
 // -------------------- Login --------------------
 const login = async (req, res) => {
   try {
@@ -205,15 +221,21 @@ const getUserById = async (req, res) => {
     if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ message: "Invalid user ID format" });
     }
-    const user = await User.findById(userId).select("_id firstName emailId role");
+
+    // Include totalReward and paymentInfo here
+    const user = await User.findById(userId).select("_id firstName emailId role totalReward paymentInfo");
+
     if (!user) {
       return res.status(404).json({ message: `User with ID ${userId} not found` });
     }
+
     res.status(200).json({
       _id: user._id,
       firstName: user.firstName || "",
       emailId: user.emailId || "",
       role: user.role || "user",
+      totalReward: user.totalReward || 0,
+      paymentInfo: user.paymentInfo || [],
       message: "User retrieved successfully",
     });
   } catch (error) {
@@ -222,48 +244,7 @@ const getUserById = async (req, res) => {
   }
 };
 
-// -------------------- Send OTP for Signup --------------------
-const SendOtpSignup = async (req, res) => {
-  const { emailId } = req.body;
-  const normalizedEmail = emailId.trim().toLowerCase();
-  const otp = Math.floor(1000 + Math.random() * 9000).toString();
 
-  console.log("Sending OTP to:", normalizedEmail);
-  try {
-    await redisClient.set(`otp:${normalizedEmail}`, otp, { EX: 300 });
-    await sendOtpMail(normalizedEmail, otp);
-    res.status(200).json({ message: "OTP sent" });
-  } catch (err) {
-    console.error("OTP Send Error:", err.message);
-    res.status(500).json({ error: "Error sending OTP" });
-  }
-};
-
-// -------------------- Verify OTP for Signup --------------------
-const VerifyOtpSignup = async (req, res) => {
-  const { emailId, otp } = req.body;
-  const normalizedEmail = emailId.trim().toLowerCase();
-
-  try {
-    const storedOtp = await redisClient.get(`otp:${normalizedEmail}`);
-
-    console.log("🔍 Email:", normalizedEmail);
-    console.log("📩 Received OTP:", otp);
-    console.log("📦 Stored OTP:", storedOtp);
-
-    if (storedOtp === otp) {
-      await redisClient.del(`otp:${normalizedEmail}`);
-      await redisClient.set(`verified:${normalizedEmail}`, "true", { EX: 600 });
-
-      return res.status(200).json({ verified: true });
-    } else {
-      return res.status(400).json({ verified: false, error: "Invalid OTP" });
-    }
-  } catch (err) {
-    console.error("OTP Verification Error:", err.message);
-    return res.status(500).json({ error: "OTP verification failed" });
-  }
-};
 
 module.exports = {
   register,

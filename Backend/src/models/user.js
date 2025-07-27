@@ -35,24 +35,23 @@ const userSchema = new Schema({
     enum: ['user', 'admin'],
     default: 'user'
   },
+
+  // ✅ Removed unique constraint from here
   missionCompleted: [{
     type: Schema.Types.ObjectId,
     ref: 'mission',
-    unique: true
+    default: []
   }],
+
   otp: {
     code: { type: String },
     expiresAt: { type: Date },
     verified: { type: Boolean, default: false }
   },
 
-  // 🔽 Stripe Payment Integration
-  stripeAccountId: {
-    type: String // Stripe Connected Account ID
-  },
   totalReward: {
     type: Number,
-    default: 0 // Total amount earned from missions
+    default: 0
   }
 
 }, {

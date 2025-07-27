@@ -45,6 +45,10 @@ const missionSchema = new Schema({
     type: Date,
     default: null
   },
+  amount: {
+    type: Number,
+    required: true
+  },
   paymentInfo: [
     {
       user: {
@@ -52,10 +56,7 @@ const missionSchema = new Schema({
         ref: "user"
       },
       amount: Number,
-      currency: {
-        type: String,
-        default: "INR"
-      },
+      
       paymentIntentId: String, // Stripe transfer ID
       status: {
         type: String,
@@ -63,6 +64,15 @@ const missionSchema = new Schema({
         default: 'pending'
       },
       paidAt: Date
+    }
+  ],
+  paymentHistory: [
+    {
+      missionId: { type: Schema.Types.ObjectId, ref: 'mission' },
+      amount: Number,
+      transferId: String,
+      paidAt: Date,
+      status: { type: String, enum: ['succeeded', 'failed'] }
     }
   ]
 });

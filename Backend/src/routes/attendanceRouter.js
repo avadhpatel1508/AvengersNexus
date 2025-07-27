@@ -5,6 +5,7 @@ const userMiddleware = require('../middleware/userMiddleware');
 const Attendance = require('../models/attendance');
 const attendanceController = require('../controllers/attendanceController');
 
+
 // 📅 Get attendance for a specific date (Admin/User)
 attendanceRouter.get('/date/:date', userMiddleware, async (req, res) => {
   try {
@@ -119,6 +120,61 @@ attendanceRouter.get('/live-attendees', userMiddleware, async (req, res) => {
       message: 'Server error',
       error: err.message,
     });
+  }
+});
+attendanceRouter.get('/monthly-summary', async (req, res) => {
+  const { month, year } = req.query;
+
+  if (!month || !year) {
+    return res.status(400).json({ message: 'Month and year are required' });
+  }
+
+  const monthNum = parseInt(month); // 1-12
+  const yearNum = parseInt(year);
+
+  const startDate = new Date(yearNum, monthNum - 1, 1);
+  const endDate = new Date(yearNum, monthNum, 1); // start of next month
+
+  try {
+    const summary = await Attendance.aggregate([
+      {
+        $match: {
+          date: { $gte: startDate, $lt: endDate },
+          status: 'Present',
+        },
+      },
+      {
+        $group: {
+          _id: '$user',
+          daysPresent: { $sum: 1 },
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'userDetails',
+        },
+      },
+      {
+        $unwind: '$userDetails',
+      },
+      {
+        $project: {
+          _id: 0,
+          userName: {
+            $concat: ['$userDetails.firstName', ' ', '$userDetails.lastName'],
+          },
+          daysPresent: 1,
+        },
+      },
+    ]);
+
+    res.json({ summary });
+  } catch (err) {
+    console.error('Error getting monthly summary:', err);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

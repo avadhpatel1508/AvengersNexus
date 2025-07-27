@@ -15,6 +15,7 @@ import Avengers from "./pages/Avengers";
 import AttendanceStart from './components/Attendance/AttendanceStart';
 import AttendanceSubmit from './components/Attendance/AttendanceSubmit';
 // import AttendanceHistory from './components/Attendance/AttendanceHistory';
+import UserReward from "./pages/userReward";
 import Attendance from "./pages/Attendance";
 
 function App() {
@@ -55,9 +56,11 @@ function App() {
         <Route path="/missionupdations" element={isAuthenticated ? <MissionUpdations /> : <Navigate to="/signup" />} />
         <Route path="/postupdations" element={isAuthenticated ? <PostUpdations /> : <Navigate to="/signup" />} />
         <Route path="/avengers" element={isAuthenticated ? <Avengers /> : <Navigate to="/signup" />} />
+        <Route path="/your-reward" element={isAuthenticated ? <UserReward /> : <Navigate to="/signup" />} />
         <Route path="/attendaceupdations" element={isAuthenticated && user?.role === 'admin' ? <AttendanceStart adminId={user._id} token={localStorage.getItem('token')} /> : <Navigate to="/signup" />} />
         <Route path="/attendance-summary" element={isAuthenticated && user?.role === 'user' ? <AttendanceSubmit userId={user._id} token={localStorage.getItem('token')} /> : <Navigate to="/signup" />} />
         <Route path="/attendance" element={isAuthenticated ? <Attendance /> : <Navigate to="/signup" />} />
+
       </Routes>
     </>
   );

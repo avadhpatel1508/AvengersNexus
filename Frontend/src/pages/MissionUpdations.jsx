@@ -6,6 +6,7 @@ import AdminNavbar from '../components/AdminNavbar';
 import UserNavbar from '../components/UserNavbar';
 import { useSelector } from 'react-redux';
 import Footer from '../components/Footer';
+
 const modes = {
   CREATE: 'create',
   UPDATE: 'complete',
@@ -14,8 +15,8 @@ const modes = {
 
 const MissionUpdations = () => {
   const user = useSelector((state) => state.auth?.user);
-
   const navigate = useNavigate();
+
   const [mode, setMode] = useState(modes.CREATE);
   const [formData, setFormData] = useState({
     title: '',
@@ -84,55 +85,59 @@ const MissionUpdations = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    setIsSubmitting(true);
+  e.preventDefault();
+  setError('');
+  setSuccess('');
+  setIsSubmitting(true);
 
-    try {
-      if (mode === modes.CREATE) {
-        if (formData.avengersAssigned.length === 0) {
-          setError('Assign at least one Avenger.');
-          setIsSubmitting(false);
-          return;
-        }
-
-        if (!formData.amount || isNaN(formData.amount) || Number(formData.amount) <= 0) {
-          setError('Enter a valid amount.');
-          setIsSubmitting(false);
-          return;
-        }
-
-        await axiosClient.post('/mission/create', formData);
-        setSuccess('✅ Mission created!');
-        setFormData({
-          title: '',
-          description: '',
-          Location: '',
-          avengersAssigned: [],
-          difficulty: 'easy',
-          amount: '',
-          isCompleted: false,
-          completedAt: null,
-          completedBy: null,
-        });
+  try {
+    if (mode === modes.CREATE) {
+      if (formData.avengersAssigned.length === 0) {
+        setError('Assign at least one Avenger.');
+        setIsSubmitting(false);
+        return;
       }
 
-      if (mode === modes.UPDATE && selectedMissionId) {
-        await axiosClient.patch(`/mission/complete/${selectedMissionId}`, {
-          isCompleted: true,
-          completedAt: new Date(),
-        });
-        setSuccess('✅ Mission marked as complete!');
+      if (!formData.amount || isNaN(formData.amount) || Number(formData.amount) <= 0) {
+        setError('Enter a valid amount.');
+        setIsSubmitting(false);
+        return;
       }
 
-      setTimeout(() => navigate('/missions'), 1500);
-    } catch (err) {
-      setError('❌ ' + (err.response?.data?.message || 'Submission failed.'));
-    } finally {
-      setIsSubmitting(false);
+      await axiosClient.post('/mission/create', {
+        ...formData,
+        amount: Number(formData.amount),
+      });
+
+      setSuccess('✅ Mission created!');
+      setFormData({
+        title: '',
+        description: '',
+        Location: '',
+        avengersAssigned: [],
+        difficulty: 'easy',
+        amount: '',
+        isCompleted: false,
+        completedAt: null,
+        completedBy: null,
+      });
     }
-  };
+
+    if (mode === modes.UPDATE && selectedMissionId) {
+      const mission = allMissions.find(m => m._id === selectedMissionId);
+      await axiosClient.patch(`/mission/complete/${selectedMissionId}`, {
+      amount: mission?.amount || 0,
+    });
+      setSuccess('✅ Mission marked as complete!');
+    }
+
+    setTimeout(() => navigate('/missions'), 1500);
+  } catch (err) {
+    setError('❌ ' + (err.response?.data?.error || err.message || 'Submission failed.'));
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const handleDelete = async () => {
     if (!selectedMissionId) {
@@ -153,159 +158,148 @@ const MissionUpdations = () => {
   };
 
   return (
-  <div className="min-h-screen bg-black text-white relative overflow-hidden">
+    <div className="min-h-screen bg-black text-white relative overflow-hidden">
       {user?.role === 'admin' ? <AdminNavbar /> : <UserNavbar />}
 
-
-    {/* Background */}
-    <div className="fixed inset-0 z-0">
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-cyan-900/20" />
-      <motion.div
-        className="absolute w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl"
-        style={{ left: mousePosition.x - 192, top: mousePosition.y - 192 }}
-      />
-    </div>
-
-    <div className="relative z-10 flex items-center justify-center min-h-screen">
-      <div className="w-full max-w-lg">
-
-        {/* Mode Buttons */}
-        <div className="flex justify-center gap-4 mb-6">
-          {Object.values(modes).map((m) => (
-            <button
-              key={m}
-              onClick={() => {
-                setMode(m);
-                setError('');
-                setSuccess('');
-                setFormData({
-                  title: '',
-                  description: '',
-                  Location: '',
-                  avengersAssigned: [],
-                  difficulty: 'easy',
-                  amount: '',
-                  isCompleted: false,
-                  completedAt: null,
-                  completedBy: null,
-                });
-                setSelectedMissionId('');
-              }}
-              className={`px-4 py-2 rounded ${
-                mode === m ? 'bg-cyan-500' : 'bg-gray-700'
-              }`}
-            >
-              {m === 'complete' ? 'Complete Mission' : m.charAt(0).toUpperCase() + m.slice(1)}
-            </button>
-          ))}
-        </div>
-
-        {/* Common Form Container */}
+      <div className="fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-cyan-900/20" />
         <motion.div
-          className="bg-black/50 backdrop-blur-md p-8 rounded-lg border border-cyan-400/20 shadow-lg flex flex-col gap-5"
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-        >
-          {/* Dropdown for Update / Delete */}
-          {(mode === modes.UPDATE || mode === modes.DELETE) && (
-            <select
-              value={selectedMissionId}
-              onChange={(e) => setSelectedMissionId(e.target.value)}
-              className="w-full p-3 bg-black/20 border border-cyan-400/30 text-white rounded"
-            >
-              <option value="">Select a mission</option>
-              {allMissions.map(m => (
-                <option key={m._id} value={m._id}>
-                  {m.title}
-                </option>
-              ))}
-            </select>
-          )}
+          className="absolute w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl"
+          style={{ left: mousePosition.x - 192, top: mousePosition.y - 192 }}
+        />
+      </div>
 
-          {/* Errors and Success */}
-          {error && <p className="text-center text-sm text-red-400">{error}</p>}
-          {success && <p className="text-center text-sm text-green-400">{success}</p>}
+      <div className="relative z-10 flex items-center justify-center min-h-screen">
+        <div className="w-full max-w-lg">
+          <div className="flex justify-center gap-4 mb-6">
+            {Object.values(modes).map((m) => (
+              <button
+                key={m}
+                onClick={() => {
+                  setMode(m);
+                  setError('');
+                  setSuccess('');
+                  setFormData({
+                    title: '',
+                    description: '',
+                    Location: '',
+                    avengersAssigned: [],
+                    difficulty: 'easy',
+                    amount: '',
+                    isCompleted: false,
+                    completedAt: null,
+                    completedBy: null,
+                  });
+                  setSelectedMissionId('');
+                }}
+                className={`px-4 py-2 rounded ${
+                  mode === m ? 'bg-cyan-500' : 'bg-gray-700'
+                }`}
+              >
+                {m === 'complete' ? 'Complete Mission' : m.charAt(0).toUpperCase() + m.slice(1)}
+              </button>
+            ))}
+          </div>
 
-          {/* Mode Specific Form Content */}
-          {mode === modes.CREATE && (
-            <>
-              <h2 className="text-3xl font-bold text-center bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-                Create New Avengers Mission
-              </h2>
-              <input name="title" placeholder="Title" value={formData.title} onChange={handleChange} required className="bg-black/20 border border-cyan-400/30 p-3 rounded text-white" />
-              <textarea name="description" placeholder="Description" value={formData.description} onChange={handleChange} required className="bg-black/20 border border-cyan-400/30 p-3 rounded text-white h-32" />
-              <input name="Location" placeholder="Location" value={formData.Location} onChange={handleChange} required className="bg-black/20 border border-cyan-400/30 p-3 rounded text-white" />
-              <input type="number" name="amount" placeholder="Amount" value={formData.amount} onChange={handleChange} className="bg-black/20 border border-cyan-400/30 p-3 rounded text-white" />
-
-              <div>
-                <label className="block mb-1">Assign Avengers:</label>
-                <div className="bg-black/20 border border-cyan-400/30 rounded p-2 max-h-40 overflow-y-auto">
-                  {users.map(user => (
-                    <label key={user._id} className="block text-white">
-                      <input
-                        type="checkbox"
-                        checked={formData.avengersAssigned.includes(user._id)}
-                        onChange={() => handleCheckboxChange(user._id)}
-                        className="mr-2"
-                      />
-                      {user.firstName}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <select name="difficulty" value={formData.difficulty} onChange={handleChange} className="bg-black/20 border border-cyan-400/30 p-2 rounded text-white">
-                {['easy', 'medium', 'hard'].map(diff => (
-                  <option key={diff} value={diff}>{diff}</option>
+          <motion.div
+            className="bg-black/50 backdrop-blur-md p-8 rounded-lg border border-cyan-400/20 shadow-lg flex flex-col gap-5"
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            {(mode === modes.UPDATE || mode === modes.DELETE) && (
+              <select
+                value={selectedMissionId}
+                onChange={(e) => setSelectedMissionId(e.target.value)}
+                className="w-full p-3 bg-black/20 border border-cyan-400/30 text-white rounded"
+              >
+                <option value="">Select a mission</option>
+                {allMissions.map(m => (
+                  <option key={m._id} value={m._id}>
+                    {m.title}
+                  </option>
                 ))}
               </select>
-            </>
-          )}
+            )}
 
-          {/* Submit Button for CREATE / UPDATE */}
-          {(mode === modes.CREATE || mode === modes.UPDATE) && (
-            <motion.button
-              type="button"
-              onClick={handleSubmit}
-              disabled={(mode === modes.UPDATE && !selectedMissionId) || isSubmitting}
-              className={`${
-                mode === modes.CREATE
-                  ? 'bg-gradient-to-r from-cyan-500 to-purple-600'
-                  : 'bg-green-600'
-              } p-3 rounded text-white font-semibold ${
-                isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
-              }`}
-            >
-              {isSubmitting
-                ? mode === modes.CREATE
-                  ? 'Deploying...'
-                  : 'Completing...'
-                : mode === modes.CREATE
-                ? 'Deploy Mission'
-                : 'Complete Mission'}
-            </motion.button>
-          )}
+            {error && <p className="text-center text-sm text-red-400">{error}</p>}
+            {success && <p className="text-center text-sm text-green-400">{success}</p>}
 
-          {/* Delete Button */}
-          {mode === modes.DELETE && (
-            <motion.button
-              onClick={handleDelete}
-              disabled={!selectedMissionId || isSubmitting}
-              className={`w-full bg-red-600 p-3 rounded text-white font-semibold ${
-                isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
-              }`}
-            >
-              {isSubmitting ? 'Deleting...' : 'Delete Mission'}
-            </motion.button>
-          )}
-        </motion.div>
+            {mode === modes.CREATE && (
+              <>
+                <h2 className="text-3xl font-bold text-center bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+                  Create New Avengers Mission
+                </h2>
+                <input name="title" placeholder="Title" value={formData.title} onChange={handleChange} required className="bg-black/20 border border-cyan-400/30 p-3 rounded text-white" />
+                <textarea name="description" placeholder="Description" value={formData.description} onChange={handleChange} required className="bg-black/20 border border-cyan-400/30 p-3 rounded text-white h-32" />
+                <input name="Location" placeholder="Location" value={formData.Location} onChange={handleChange} required className="bg-black/20 border border-cyan-400/30 p-3 rounded text-white" />
+                <input type="number" name="amount" placeholder="Amount" value={formData.amount} onChange={handleChange} className="bg-black/20 border border-cyan-400/30 p-3 rounded text-white" />
+
+                <div>
+                  <label className="block mb-1">Assign Avengers:</label>
+                  <div className="bg-black/20 border border-cyan-400/30 rounded p-2 max-h-40 overflow-y-auto">
+                    {users.map(user => (
+                      <label key={user._id} className="block text-white">
+                        <input
+                          type="checkbox"
+                          checked={formData.avengersAssigned.includes(user._id)}
+                          onChange={() => handleCheckboxChange(user._id)}
+                          className="mr-2"
+                        />
+                        {user.firstName}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <select name="difficulty" value={formData.difficulty} onChange={handleChange} className="bg-black/20 border border-cyan-400/30 p-2 rounded text-white">
+                  {['easy', 'medium', 'hard'].map(diff => (
+                    <option key={diff} value={diff}>{diff}</option>
+                  ))}
+                </select>
+              </>
+            )}
+
+            {(mode === modes.CREATE || mode === modes.UPDATE) && (
+              <motion.button
+                type="button"
+                onClick={handleSubmit}
+                disabled={(mode === modes.UPDATE && !selectedMissionId) || isSubmitting}
+                className={`${
+                  mode === modes.CREATE
+                    ? 'bg-gradient-to-r from-cyan-500 to-purple-600'
+                    : 'bg-green-600'
+                } p-3 rounded text-white font-semibold ${
+                  isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
+                }`}
+              >
+                {isSubmitting
+                  ? mode === modes.CREATE
+                    ? 'Deploying...'
+                    : 'Completing...'
+                  : mode === modes.CREATE
+                  ? 'Deploy Mission'
+                  : 'Complete Mission'}
+              </motion.button>
+            )}
+
+            {mode === modes.DELETE && (
+              <motion.button
+                onClick={handleDelete}
+                disabled={!selectedMissionId || isSubmitting}
+                className={`w-full bg-red-600 p-3 rounded text-white font-semibold ${
+                  isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
+                }`}
+              >
+                {isSubmitting ? 'Deleting...' : 'Delete Mission'}
+              </motion.button>
+            )}
+          </motion.div>
+        </div>
       </div>
+      <Footer />
     </div>
-    <Footer/>
-  </div>
-);
-
+  );
 };
 
 export default MissionUpdations;

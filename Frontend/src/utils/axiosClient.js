@@ -7,5 +7,13 @@ const axiosClient = axios.create({
     "Content-Type": "application/json",
   },
 });
+axiosClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token'); // or from Redux state
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 
 export default axiosClient;

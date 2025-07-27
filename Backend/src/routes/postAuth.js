@@ -20,7 +20,7 @@ postRouter.post('/notify-important-post', async (req, res) => {
   try {
     const { title, description } = req.body;
 
-    // ✅ Get all user emails (use 'emailId', not 'email')
+    // Get all user emails (use 'emailId', not 'email')
     const users = await User.find({}, 'emailId');
     const emailList = users
       .map(user => user.emailId)
@@ -30,16 +30,16 @@ postRouter.post('/notify-important-post', async (req, res) => {
       return res.status(400).json({ success: false, message: 'No valid user emails found.' });
     }
 
-    // ✅ Send email to each user (you can batch this if needed)
+    //  Send email to each user (you can batch this if needed)
     await Promise.all(
       emailList.map(email => sendEmail(email, title, description))
     );
 
     res.status(200).json({ success: true, message: 'Emails sent successfully.' });
   } catch (error) {
-    console.error('❌ Error sending emails:', error);
+    console.error(' Error sending emails:', error);
     res.status(500).json({ success: false, message: 'Failed to send emails.' });
   }
 });
 
-module.exports = postRouter;
+  module.exports = postRouter;

@@ -7,30 +7,35 @@ const User = require("../models/user")
 require("dotenv").config();
 
 // Create Mission (Admin only)
-const   CreateMission = async (req, res) => {
+const CreateMission = async (req, res) => {
   try {
     const { title, description, Location, avengersAssigned, difficulty, amount } = req.body;
 
+    // Check for missing fields
     if (!title || !description || !Location || !avengersAssigned || !difficulty || !amount) {
       return res.status(400).json({ message: "Missing required fields." });
     }
 
-    // Create dummy paymentInfo array (1 entry per avenger)
+  
+  
+
+    // Create paymentInfo for each avenger
     const paymentInfo = avengersAssigned.map(avengerId => ({
       user: avengerId,
-      amount,
-      currency: "INR",
-      paymentIntentId: "", // will be filled post Stripe session
+      amount: amount,
+      paymentIntentId: "", // not using Stripe now
       status: "pending",
       paidAt: null
     }));
 
+    // Create mission
     const newMission = new Mission({
       title,
       description,
       Location,
       avengersAssigned,
       difficulty,
+      amount, 
       paymentInfo
     });
 
@@ -168,53 +173,51 @@ const getCompletedMissionsByUser =  async(req,res)=>{
     }
 }
 
+
 const completeMissionById = async (req, res) => {
   try {
     const { id } = req.params;
-    const { amountPerUser } = req.body; // Expecting admin to set payout amount per user
 
+    // Fetch mission and related users
     const mission = await Mission.findById(id).populate('avengersAssigned');
     if (!mission) return res.status(404).json({ error: "Mission not found" });
+    if (mission.isCompleted) return res.status(400).json({ error: "Mission is already completed" });
 
-    if (mission.isCompleted) {
-      return res.status(400).json({ error: "Mission is already completed" });
+    const amount = mission.amount;
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: "Invalid reward amount in mission" });
+    }
+
+   
+    const admin = await User.findOne({ role: 'admin' });
+    if (!admin) return res.status(404).json({ error: "Admin not found" });
+
+    const totalPayout = amount * mission.avengersAssigned.length;
+    if (admin.totalReward < totalPayout) {
+      return res.status(400).json({ error: "Admin does not have enough balance to pay users" });
     }
 
     const paymentResults = [];
 
     for (const user of mission.avengersAssigned) {
-      if (!user.stripeAccountId) {
-        paymentResults.push({ user: user._id, status: 'failed', reason: 'No Stripe account linked' });
-        continue;
-      }
-
       try {
-        const transfer = await stripe.transfers.create({
-          amount: amountPerUser * 100, // Convert INR to paise
-          currency: 'inr',
-          destination: user.stripeAccountId,
-          description: `Payout for mission: ${mission.title}`
-        });
+        user.totalReward += amount;
+        user.missionCompleted.addToSet(mission._id);
+        await user.save();
 
         mission.paymentInfo.push({
           user: user._id,
-          amount: amountPerUser,
-          currency: 'INR',
-          paymentIntentId: transfer.id,
+          amount,
+          paymentIntentId: null,
           status: 'succeeded',
           paidAt: new Date()
         });
-
-        user.totalReward += amountPerUser;
-        user.missionCompleted.addToSet(mission._id); // prevent duplicate
-        await user.save();
 
         paymentResults.push({ user: user._id, status: 'succeeded' });
       } catch (err) {
         mission.paymentInfo.push({
           user: user._id,
-          amount: amountPerUser,
-          currency: 'INR',
+          amount,
           paymentIntentId: null,
           status: 'failed',
           paidAt: new Date()
@@ -224,12 +227,15 @@ const completeMissionById = async (req, res) => {
       }
     }
 
+    admin.totalReward -= totalPayout;
+    await admin.save();
+
     mission.isCompleted = true;
     mission.completedAt = new Date();
     await mission.save();
 
     res.status(200).json({
-      message: "Mission marked as completed and payments processed",
+      message: "Mission marked as completed and rewards distributed",
       missionId: mission._id,
       payments: paymentResults
     });
@@ -239,6 +245,42 @@ const completeMissionById = async (req, res) => {
   }
 };
 
+
+const getRewardsByUser = async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+
+    // Fetch missions with payment record for the user
+    const missions = await Mission.find({ 'paymentInfo.user': userId });
+
+    const rewardHistory = missions.flatMap((mission) =>
+      mission.paymentInfo
+        .filter((info) => info.user.toString() === userId)
+        .map((info) => ({
+          missionId: mission._id,
+          title: mission.title,
+          amount: info.amount,
+          status: info.status,
+          paidAt: info.paidAt,
+        }))
+    );
+
+    // Fetch total reward from user
+    const user = await User.findById(userId).select('totalReward');
+    const totalReward = user?.totalReward || 0;
+
+    res.json({ totalReward, rewardHistory });
+  } catch (err) {
+    console.error('Error fetching rewards:', err);
+    res.status(500).json({ error: 'Failed to fetch rewards' });
+  }
+};
+
+
 module.exports = {
     CreateMission,
     UpdateMission,
@@ -246,6 +288,7 @@ module.exports = {
     getMissionById,
     getAllMission,
     getCompletedMissionsByUser,
-    completeMissionById
+    completeMissionById,
+    getRewardsByUser
     
 };

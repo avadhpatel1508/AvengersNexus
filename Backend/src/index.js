@@ -32,7 +32,7 @@ app.use('/user', authRouter);
 app.use('/mission', missionRouter);
 app.use('/post', postRouter);
 app.use('/attendance', attendanceRouter);
-
+app.use(express.json());
 require('./socket/attendanceSocket')(io);
 
 const InitializeConnection = async () => {

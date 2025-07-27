@@ -8,8 +8,17 @@ import AdminNavbar from '../components/AdminNavbar';
 import UserNavbar from '../components/UserNavbar';
 import { useSelector } from 'react-redux';
 import Footer from '../components/Footer';
-const Attendance = () => {
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from 'recharts';
 
+const Attendance = () => {
   const user = useSelector((state) => state.auth?.user);
 
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -18,9 +27,14 @@ const Attendance = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [viewMode, setViewMode] = useState('calendar');
+  const [month, setMonth] = useState(new Date().getMonth());
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [monthlyData, setMonthlyData] = useState([]);
 
   useEffect(() => {
-    const handleMouseMove = (e) => setMousePosition({ x: e.clientX, y: e.clientY });
+    const handleMouseMove = (e) =>
+      setMousePosition({ x: e.clientX, y: e.clientY });
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
@@ -35,9 +49,12 @@ const Attendance = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.get(`http://localhost:4000/attendance/date/${formattedDate}`, {
-        withCredentials: true,
-      });
+      const response = await axios.get(
+        `http://localhost:4000/attendance/date/${formattedDate}`,
+        {
+          withCredentials: true,
+        }
+      );
       setAttendanceData(response.data.attendance || []);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch attendance');
@@ -46,6 +63,24 @@ const Attendance = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const fetchMonthlyAttendance = async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:4000/attendance/monthly-summary?month=${month + 1}&year=${year}`,
+          { withCredentials: true }
+        );
+        setMonthlyData(res.data.summary || []);
+      } catch (err) {
+        console.error('Error fetching monthly data:', err);
+      }
+    };
+
+    if (viewMode === 'graph') {
+      fetchMonthlyAttendance();
+    }
+  }, [viewMode, month, year]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -97,73 +132,161 @@ const Attendance = () => {
           </span>
         </motion.h2>
 
-        <div className="flex justify-center gap-4 mb-6">
+        <div className="flex justify-center gap-6 mb-8">
           <button
-            onClick={() => setShowCalendar(!showCalendar)}
-            className="flex items-center gap-2 px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-lg"
+            className={`px-6 py-3 rounded-lg font-semibold ${
+              viewMode === 'calendar'
+                ? 'bg-cyan-600 text-white'
+                : 'bg-gray-700 text-gray-300'
+            }`}
+            onClick={() => setViewMode('calendar')}
           >
-            <FaCalendarAlt /> Select Date
+            Calendar View
           </button>
           <button
-            onClick={fetchAttendance}
-            className="px-6 py-3 bg-green-600 hover:bg-green-500 text-white font-semibold rounded-lg"
+            className={`px-6 py-3 rounded-lg font-semibold ${
+              viewMode === 'graph'
+                ? 'bg-cyan-600 text-white'
+                : 'bg-gray-700 text-gray-300'
+            }`}
+            onClick={() => setViewMode('graph')}
           >
-            Get Attendance
+            Graph View
           </button>
         </div>
 
-        {showCalendar && (
-          <div className="flex justify-center mb-6">
-            <Calendar onChange={setSelectedDate} value={selectedDate} className="rounded-lg p-4 bg-white text-black" />
-          </div>
+        {viewMode === 'calendar' && (
+          <>
+            <div className="flex justify-center gap-4 mb-6">
+              <button
+                onClick={() => setShowCalendar(!showCalendar)}
+                className="flex items-center gap-2 px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-lg"
+              >
+                <FaCalendarAlt /> Select Date
+              </button>
+              <button
+                onClick={fetchAttendance}
+                className="px-6 py-3 bg-green-600 hover:bg-green-500 text-white font-semibold rounded-lg"
+              >
+                Get Attendance
+              </button>
+            </div>
+
+            {showCalendar && (
+              <div className="flex justify-center mb-6">
+                <Calendar
+                  onChange={setSelectedDate}
+                  value={selectedDate}
+                  className="rounded-lg p-4 bg-white text-black"
+                />
+              </div>
+            )}
+
+            <p className="text-center text-gray-300 mb-8 text-lg">
+              <strong>Selected Date:</strong> {selectedDate.toDateString()}
+            </p>
+
+            <motion.div
+              className="max-w-4xl mx-auto"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {loading ? (
+                <motion.p className="text-center text-cyan-400" variants={itemVariants}>
+                  Loading...
+                </motion.p>
+              ) : error ? (
+                <motion.p className="text-center text-red-400" variants={itemVariants}>
+                  {error}
+                </motion.p>
+              ) : attendanceData.length === 0 ? (
+                <motion.p className="text-center text-gray-400" variants={itemVariants}>
+                  No attendance records found.
+                </motion.p>
+              ) : (
+                <motion.ul className="space-y-4" variants={containerVariants}>
+                  {attendanceData.map((entry) => (
+                    <motion.li
+                      key={entry._id}
+                      className="flex justify-between items-center bg-black/40 backdrop-blur-md p-4 rounded-xl border border-cyan-400/20 hover:scale-[1.02] transition-transform"
+                      variants={itemVariants}
+                    >
+                      <span className="font-semibold text-white">
+                        {entry.user?.firstName || 'Unknown'} ({entry.user?.emailId})
+                      </span>
+                      <span
+                        className={`font-bold ${
+                          entry.status === 'Present' ? 'text-green-400' : 'text-red-400'
+                        }`}
+                      >
+                        {entry.status}
+                      </span>
+                    </motion.li>
+                  ))}
+                </motion.ul>
+              )}
+            </motion.div>
+          </>
         )}
 
-        <p className="text-center text-gray-300 mb-8 text-lg">
-          <strong>Selected Date:</strong> {selectedDate.toDateString()}
-        </p>
+        {viewMode === 'graph' && (
+          <>
+            <div className="flex justify-center gap-4 mb-8">
+  <div className="relative">
+    <select
+      value={month}
+      onChange={(e) => setMonth(parseInt(e.target.value))}
+      className="appearance-none px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-lg focus:outline-none"
+    >
+      {Array.from({ length: 12 }, (_, i) => (
+        <option key={i} value={i}>
+          {new Date(0, i).toLocaleString('default', { month: 'long' })}
+        </option>
+      ))}
+    </select>
+  </div>
 
-        <motion.div
-          className="max-w-4xl mx-auto"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          {loading ? (
-            <motion.p className="text-center text-cyan-400" variants={itemVariants}>Loading...</motion.p>
-          ) : error ? (
-            <motion.p className="text-center text-red-400" variants={itemVariants}>{error}</motion.p>
-          ) : attendanceData.length === 0 ? (
-            <motion.p className="text-center text-gray-400" variants={itemVariants}>
-              No attendance records found.
-            </motion.p>
-          ) : (
-            <motion.ul className="space-y-4" variants={containerVariants}>
-              {attendanceData.map((entry) => (
-                <motion.li
-                  key={entry._id}
-                  className="flex justify-between items-center bg-black/40 backdrop-blur-md p-4 rounded-xl border border-cyan-400/20 hover:scale-[1.02] transition-transform"
-                  variants={itemVariants}
-                >
-                  <span className="font-semibold text-white">
-                    {entry.user?.firstName || 'Unknown'} ({entry.user?.emailId})
-                  </span>
-                  <span className={`font-bold ${entry.status === 'Present' ? 'text-green-400' : 'text-red-400'}`}>
-                    {entry.status}
-                  </span>
-                </motion.li>
-              ))}
-            </motion.ul>
-          )}
-        </motion.div>
+  <div className="relative">
+    <input
+      type="number"
+      value={year}
+      onChange={(e) => setYear(parseInt(e.target.value))}
+      className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-lg w-32 text-center focus:outline-none appearance-none"
+      min="2000"
+      max="2100"
+    />
+  </div>
+</div>
+
+
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart
+                data={monthlyData}
+                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="userName" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="daysPresent" fill="#06b6d4" />
+              </BarChart>
+            </ResponsiveContainer>
+          </>
+        )}
       </div>
 
       <style jsx>{`
         @keyframes grid-move {
-          0% { transform: translate(0, 0); }
-          100% { transform: translate(50px, 50px); }
+          0% {
+            transform: translate(0, 0);
+          }
+          100% {
+            transform: translate(50px, 50px);
+          }
         }
       `}</style>
-      <Footer/>
+      <Footer />
     </div>
   );
 };
