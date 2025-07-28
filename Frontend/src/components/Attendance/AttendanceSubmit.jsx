@@ -1,6 +1,5 @@
-// same imports
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import axiosClient from '../../utils/axiosClient';
 import { initializeSocket, getSocket } from '../../socket/socket';
 import { motion } from 'framer-motion';
 import { FaShieldAlt } from 'react-icons/fa';
@@ -9,12 +8,11 @@ import UserNavbar from '../UserNavbar';
 import Footer from '../Footer';
 import { useSelector } from 'react-redux';
 
-
 const AttendanceSubmit = () => {
   const user = useSelector((state) => state.auth?.user);
-  const token = useSelector((state) => state.auth?.token);
   const userId = user?._id;
   const role = user?.role;
+
   const [attendanceHistory, setAttendanceHistory] = useState([]);
   const [otp, setOtp] = useState('');
   const [receivedOtp, setReceivedOtp] = useState('');
@@ -26,8 +24,18 @@ const AttendanceSubmit = () => {
   const [error, setError] = useState('');
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
+  const formatDateTime = (isoDate) => {
+    const dateObj = new Date(isoDate);
+    const date = dateObj.toLocaleDateString('en-IN');
+    const time = dateObj.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    return { date, time };
+  };
+
   useEffect(() => {
-    initializeSocket(token);
+    initializeSocket(); // No token passed
     const socket = getSocket();
     if (!socket) return;
 
@@ -44,6 +52,7 @@ const AttendanceSubmit = () => {
     socket.on('attendance-success', (data) => {
       setMessage(data.message || 'Attendance marked successfully!');
       setSubmitted(true);
+      fetchAttendance(); // Refresh after marking
     });
 
     socket.on('attendance-failed', (err) => {
@@ -71,7 +80,7 @@ const AttendanceSubmit = () => {
       socket.off('attendance-failed');
       socket.off('active-session-data');
     };
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     if (timer > 0) {
@@ -83,34 +92,28 @@ const AttendanceSubmit = () => {
   }, [timer]);
 
   useEffect(() => {
-    const handleMouseMove = (e) => setMousePosition({ x: e.clientX, y: e.clientY });
+    const handleMouseMove = (e) =>
+      setMousePosition({ x: e.clientX, y: e.clientY });
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  useEffect(() => {
-    const fetchAttendance = async () => {
-      try {
-        const { data } = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/attendance/user/${userId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        if (data?.success) {
-          setAttendanceHistory(data.attendance || []);
-        }
-      } catch (err) {
-        console.error("❌ Error fetching attendance:", err.response?.data || err.message);
+  const fetchAttendance = async () => {
+    try {
+      const { data } = await axiosClient.get(`/attendance/${userId}`);
+      if (data?.success) {
+        setAttendanceHistory(data.attendance || []);
       }
-    };
+    } catch (err) {
+      console.error('❌ Error fetching attendance:', err.response?.data || err.message);
+    }
+  };
 
-    if (userId && token) {
+  useEffect(() => {
+    if (userId) {
       fetchAttendance();
     }
-  }, [userId, token]);
+  }, [userId]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -144,24 +147,12 @@ const AttendanceSubmit = () => {
     },
   };
 
-  // 🧠 Helper to format date & time
-  const formatDateTime = (isoDate) => {
-    const dateObj = new Date(isoDate);
-    const date = dateObj.toLocaleDateString('en-IN'); // dd/mm/yyyy
-    const time = dateObj.toLocaleTimeString('en-IN', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    return { date, time };
-  };
-
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       <div className="relative z-20">
         {role === 'admin' ? <AdminNavbar /> : <UserNavbar />}
       </div>
 
-      {/* Background Effects */}
       <div className="fixed inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-cyan-900/20"></div>
         <motion.div
@@ -173,10 +164,14 @@ const AttendanceSubmit = () => {
         <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-pink-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
       </div>
 
-      {/* Content */}
       <div className="relative z-10 p-4 sm:p-8 flex flex-col items-center justify-center min-h-screen gap-6">
         {/* OTP Box */}
-        <motion.div className="w-full max-w-md bg-black/40 backdrop-blur-md p-6 rounded-xl border border-cyan-400/20" variants={containerVariants} initial="hidden" animate="visible">
+        <motion.div
+          className="w-full max-w-md bg-black/40 backdrop-blur-md p-6 rounded-xl border border-cyan-400/20"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
           <motion.h2 className="text-4xl font-black text-center uppercase tracking-widest mb-6 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent" variants={itemVariants}>
             Captain America Attendance
           </motion.h2>
@@ -190,7 +185,11 @@ const AttendanceSubmit = () => {
               {message}
             </motion.p>
           ) : (
-            <motion.form onSubmit={handleSubmit} className="flex flex-col items-center gap-4" variants={itemVariants}>
+            <motion.form
+              onSubmit={handleSubmit}
+              className="flex flex-col items-center gap-4"
+              variants={itemVariants}
+            >
               <div className="w-full">
                 <label className="block text-gray-300 mb-2 font-semibold">Enter OTP:</label>
                 <input
@@ -221,7 +220,12 @@ const AttendanceSubmit = () => {
         </motion.div>
 
         {/* Attendance History */}
-        <motion.div className="w-full max-w-4xl bg-black/40 backdrop-blur-md p-6 rounded-xl border border-cyan-400/20" variants={containerVariants} initial="hidden" animate="visible">
+        <motion.div
+          className="w-full max-w-4xl bg-black/40 backdrop-blur-md p-6 rounded-xl border border-cyan-400/20"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
           <motion.h3 className="text-2xl font-bold text-center text-white mb-6" variants={itemVariants}>
             Attendance History
           </motion.h3>
@@ -236,27 +240,26 @@ const AttendanceSubmit = () => {
                 </tr>
               </thead>
               <tbody>
-  {attendanceHistory.length === 0 ? (
-    <tr>
-      <td colSpan="4" className="text-center text-red-400 py-4">
-        No attendance records found
-      </td>
-    </tr>
-  ) : (
-    attendanceHistory.map((record, index) => {
-      const { date, time } = formatDateTime(record.date);
-      return (
-        <tr key={record._id || index}>
-          <td>{date}</td>
-          <td>{time}</td>
-          <td>{record.otpSessionId}</td>
-          <td>{record.status}</td>
-        </tr>
-      );
-    })
-  )}
-</tbody>
-
+                {attendanceHistory.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" className="text-center text-red-400 py-4">
+                      No attendance records found
+                    </td>
+                  </tr>
+                ) : (
+                  attendanceHistory.map((record, index) => {
+                    const { date, time } = formatDateTime(record.date);
+                    return (
+                      <tr key={record._id || index}>
+                        <td className="px-4 py-2">{date}</td>
+                        <td className="px-4 py-2">{time}</td>
+                        <td className="px-4 py-2">{record.otpSessionId}</td>
+                        <td className="px-4 py-2">{record.status}</td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
             </table>
           </div>
         </motion.div>

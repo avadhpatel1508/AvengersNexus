@@ -6,21 +6,25 @@ const Attendance = require('../models/attendance');
 const attendanceController = require('../controllers/attendanceController');
 
 
-// 📅 Get attendance for a specific date (Admin/User)
+
 attendanceRouter.get('/date/:date', userMiddleware, async (req, res) => {
   try {
-    const selectedDate = new Date(req.params.date);
+    const inputDate = new Date(req.params.date); 
 
-    const startOfDay = new Date(selectedDate.setUTCHours(0, 0, 0, 0));
-    const endOfDay = new Date(selectedDate.setUTCHours(23, 59, 59, 999));
+  
+    const adjustedDate = new Date(inputDate);
+    adjustedDate.setDate(adjustedDate.getDate() - 1); 
+
+    const startOfDay = new Date(adjustedDate.setUTCHours(0, 0, 0, 0));
+    const endOfDay = new Date(adjustedDate.setUTCHours(23, 59, 59, 999));
 
     const attendance = await Attendance.find({
-      date: { $gte: startOfDay, $lte: endOfDay }
+      date: { $gte: startOfDay, $lte: endOfDay },
     }).populate('user', 'firstName emailId');
 
     res.status(200).json({
       success: true,
-      date: startOfDay.toISOString().split('T')[0],
+      date: req.params.date,
       attendance,
     });
   } catch (err) {
@@ -33,7 +37,6 @@ attendanceRouter.get('/date/:date', userMiddleware, async (req, res) => {
 });
 
 
-// 👤 Get all attendance for a specific user
 attendanceRouter.get('/:userId', userMiddleware, async (req, res) => {
   try {
     const { userId } = req.params;
@@ -47,7 +50,7 @@ attendanceRouter.get('/:userId', userMiddleware, async (req, res) => {
   }
 });
 
-// 🚀 Start a new attendance session (Admin)
+
 attendanceRouter.post('/start', adminMiddleware, async (req, res) => {
   try {
     const result = await attendanceController.startAttendance(req.app.get('io'), req.result._id);
@@ -57,14 +60,14 @@ attendanceRouter.post('/start', adminMiddleware, async (req, res) => {
   }
 });
 
-// ✅ Submit OTP (User)
+
 attendanceRouter.post('/submit', userMiddleware, async (req, res) => {
   const { enteredOtp, sessionId } = req.body;
   const result = await attendanceController.submitOtp(req.result._id, enteredOtp, sessionId);
   res.status(result.success ? 200 : 400).json(result);
 });
 
-// ❌ Forcefully mark absentees (Admin)
+
 attendanceRouter.post('/markAbsent', adminMiddleware, async (req, res) => {
   try {
     await attendanceController.markAbsentForAll(req.body.sessionId);
@@ -74,7 +77,6 @@ attendanceRouter.post('/markAbsent', adminMiddleware, async (req, res) => {
   }
 });
 
-// 🧠 Redundant endpoint for flexibility (Optional)
 attendanceRouter.post('/mark', userMiddleware, async (req, res) => {
   const userId = req.result._id;
   const { otp, sessionId } = req.body;
@@ -83,7 +85,7 @@ attendanceRouter.post('/mark', userMiddleware, async (req, res) => {
   res.status(result.success ? 200 : 400).json({ message: result.message });
 });
 
-// 🔍 Check if an active session is running
+
 attendanceRouter.get('/check-active', async (req, res) => {
   return attendanceController.checkactive(req, res);
 });

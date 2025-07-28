@@ -6,6 +6,7 @@ import Footer from '../Footer';
 import AdminNavbar from '../AdminNavbar';
 import UserNavbar from '../UserNavbar';
 import { useSelector } from 'react-redux';
+import axiosClient from '../../utils/axiosClient';
 
 const AttendanceStart = ({ adminId, token }) => {
   const user = useSelector((state) => state.auth?.user);
@@ -18,25 +19,28 @@ const AttendanceStart = ({ adminId, token }) => {
   const [attendanceOver, setAttendanceOver] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [liveAttendees, setLiveAttendees] = useState([]);
+  const [absentMarked, setAbsentMarked] = useState(false);
 
   useEffect(() => {
     initializeSocket(token);
     const socket = getSocket();
     if (!socket) return;
+
     const handleUserAttended = ({ userId, name, email }) => {
-    console.log('👥 Received user-attended:', { userId, name, email });
-    setLiveAttendees((prev) => {
-      if (prev.find((a) => a.userId === userId)) return prev;
-      return [...prev, { userId, name, email }];
-    });
-  };
+      console.log('👥 Received user-attended:', { userId, name, email });
+      setLiveAttendees((prev) => {
+        if (prev.find((a) => a.userId === userId)) return prev;
+        return [...prev, { userId, name, email }];
+      });
+    };
+
     socket.on('attendance-started', ({ otp, sessionId, expiresIn }) => {
       setGeneratedOtp(otp);
       setSessionId(sessionId);
       setTimer(expiresIn || 60);
       setAttendanceStarted(true);
       setAttendanceOver(false);
-      setLiveAttendees([]); // Reset attendees on new session
+      setLiveAttendees([]);
     });
 
     socket.on('active-session-data', ({ otp, sessionId, expiresAt }) => {
@@ -57,7 +61,7 @@ const AttendanceStart = ({ adminId, token }) => {
     socket.on('attendance-session-failed', (err) => {
       setError(err.message || 'Attendance session failed');
     });
-  
+
     socket.emit('get-active-session', { adminId });
 
     return () => {
@@ -72,13 +76,28 @@ const AttendanceStart = ({ adminId, token }) => {
     if (timer > 0) {
       const countdown = setInterval(() => {
         setTimer((prev) => {
-          if (prev === 1) setAttendanceOver(true);
+          if (prev === 1) {
+            setAttendanceOver(true);
+            markAbsentUsers(); // ⬅️ Call here
+          }
           return prev - 1;
         });
       }, 1000);
       return () => clearInterval(countdown);
     }
   }, [timer]);
+
+  const markAbsentUsers = async () => {
+    try {
+      const res = await axiosClient.post('/attendance/markAbsent', {
+        sessionId,
+      });
+      console.log('✔️ Absentees marked:', res.data);
+      setAbsentMarked(true);
+    } catch (err) {
+      console.error('❌ Failed to mark absentees:', err);
+    }
+  };
 
   useEffect(() => {
     const handleMouseMove = (e) => setMousePosition({ x: e.clientX, y: e.clientY });
@@ -176,6 +195,12 @@ const AttendanceStart = ({ adminId, token }) => {
                   <FaClock /> {timer}s left
                 </div>
               )}
+
+              {attendanceOver && absentMarked && (
+                <div className="text-green-400 mt-1 text-center text-sm">
+                  Absent users marked successfully.
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -187,24 +212,22 @@ const AttendanceStart = ({ adminId, token }) => {
         </motion.div>
 
         {/* Live Attendee List */}
-      {liveAttendees.length > 0 && (
-  <motion.div
-    className="bg-slate-800 mt-4 p-4 rounded-xl shadow-xl border border-cyan-400"
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-  >
-    <h3 className="text-xl font-bold text-cyan-300 mb-2">Live Attendees:</h3>
-    <ul className="space-y-1 max-h-60 overflow-y-auto">
-      {liveAttendees.map((att) => (
-        <li key={att.userId} className="text-white">
-          ✅ {att.name} <span className="text-gray-400">({att.email})</span>
-        </li>
-      ))}
-    </ul>
-  </motion.div>
-)}
-
-
+        {liveAttendees.length > 0 && (
+          <motion.div
+            className="bg-slate-800 mt-4 p-4 rounded-xl shadow-xl border border-cyan-400"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <h3 className="text-xl font-bold text-cyan-300 mb-2">Live Attendees:</h3>
+            <ul className="space-y-1 max-h-60 overflow-y-auto">
+              {liveAttendees.map((att) => (
+                <li key={att.userId} className="text-white">
+                  ✅ {att.name} <span className="text-gray-400">({att.email})</span>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        )}
       </div>
 
       <Footer />

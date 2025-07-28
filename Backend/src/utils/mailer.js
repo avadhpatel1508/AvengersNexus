@@ -25,7 +25,7 @@ async function sendEmail(to, title, description) {
     to,
     subject: `[IMPORTANT] ${title}`,
     html: `
-      <h2 style="color:#00ffff">📢 Important Update from Avengers Nexus</h2>
+      <h2 style="color:#00ffff"> Important Update from Avengers Nexus</h2>
       <h3>${title}</h3>
       <p>${description}</p>
       <hr/>
