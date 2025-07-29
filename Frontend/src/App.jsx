@@ -15,7 +15,7 @@ import Avengers from "./pages/Avengers";
 import AttendanceStart from './components/Attendance/AttendanceStart';
 import AttendanceSubmit from './components/Attendance/AttendanceSubmit';
 // import AttendanceHistory from './components/Attendance/AttendanceHistory';
-import UserReward from "./pages/UserReward";
+import UserReward from "./pages/userReward";
 import Attendance from "./pages/Attendance";
 
 function App() {

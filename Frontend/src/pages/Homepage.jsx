@@ -106,39 +106,13 @@ const Homepage = () => {
           <div className="absolute top-0 left-2/3 w-1 h-full bg-gradient-to-b from-white/20 via-transparent to-transparent transform rotate-6 animate-pulse delay-2000"></div>
         </div>
 
-        <div className="absolute inset-0">
-          {[...Array(30)].map((_, i) => (
-            <motion.div
-              key={i}
-              className={`absolute w-2 h-2 rounded-full ${
-                i % 3 === 0 ? 'bg-red-500/40' :
-                  i % 3 === 1 ? 'bg-blue-500/40' : 'bg-white/40'
-              }`}
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-              }}
-              animate={{
-                y: [0, -30, 0],
-                opacity: [0.2, 0.8, 0.2],
-                scale: [0.5, 1.2, 0.5],
-              }}
-              transition={{
-                duration: 3 + Math.random() * 4,
-                repeat: Infinity,
-                delay: Math.random() * 3,
-                ease: "easeInOut",
-              }}
-            />
-          ))}
-        </div>
-
         <motion.div
           className="absolute w-96 h-96 rounded-full"
           style={{
             left: mousePosition.x - 192,
             top: mousePosition.y - 192,
-            background: 'radial-gradient(circle, rgba(220, 38, 38, 0.15) 0%, rgba(37, 99, 235, 0.1) 50%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(220, 38, 38, 0.08) 0%, rgba(37, 99, 235, 0.06) 50%, transparent 70%)',
+
           }}
           transition={{ type: "spring", stiffness: 20, damping: 30 }}
         />
@@ -230,7 +204,7 @@ const Homepage = () => {
             transition={{ duration: 1.5, ease: "easeOut" }}
           >
             <div className="relative group perspective-1000">
-              <div className="absolute -inset-12 bg-gradient-to-r from-red-500 via-white to-blue-500 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity duration-1000 animate-pulse"></div>
+
 
               <motion.div
                 className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/20 shadow-2xl"

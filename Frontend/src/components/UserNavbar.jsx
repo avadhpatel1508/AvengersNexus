@@ -33,7 +33,6 @@ function UserNavbar() {
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 1 }}
         >
-            {/* Logo */}
             <NavLink to="/" className="flex items-center space-x-3" onClick={() => setIsMobileMenuOpen(false)}>
                 <motion.div whileHover={{ scale: 1.05 }} className="flex items-center space-x-3">
                     <div className="relative">
@@ -44,9 +43,9 @@ function UserNavbar() {
                     </div>
                     <div>
                         <div className="text-2xl font-black bg-gradient-to-r from-red-400 via-white to-blue-400 bg-clip-text text-transparent">
-                            AVENGERS
+                            AVENGERSNEXUS
                         </div>
-                        <div className="text-xs text-gray-400 tracking-widest">INITIATIVE</div>
+                        
                     </div>
                 </motion.div>
             </NavLink>

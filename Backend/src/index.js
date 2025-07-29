@@ -10,6 +10,7 @@ const authRouter = require("./routes/userAuth");
 const missionRouter = require("./routes/missionAuth");
 const postRouter = require("./routes/postAuth");
 const attendanceRouter = require('./routes/attendanceRouter');
+const chatRouter = require('./routes/chatRouter');
 
 const http = require('http');
 const { Server } = require('socket.io');
@@ -32,6 +33,8 @@ app.use('/user', authRouter);
 app.use('/mission', missionRouter);
 app.use('/post', postRouter);
 app.use('/attendance', attendanceRouter);
+app.use('/chat', chatRouter);
+
 app.use(express.json());
 require('./socket/attendanceSocket')(io);
 
