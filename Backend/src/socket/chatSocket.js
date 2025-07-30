@@ -51,7 +51,7 @@ module.exports = (io) => {
         });
 
         const savedMessage = await newMessage.save();
-        const populated = await savedMessage.populate('sender', 'name email');
+        const populated = await savedMessage.populate('sender', 'firstName emailId');
 
         const messagePayload = {
           _id: populated._id,
@@ -59,8 +59,8 @@ module.exports = (io) => {
           message: populated.message,
           sender: {
             _id: populated.sender._id,
-            name: populated.sender.name,
-            email: populated.sender.email,
+            firstName: populated.sender.firstName,
+            emailId: populated.sender.emailId,
           },
           timestamp: populated.timestamp,
         };
