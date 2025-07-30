@@ -83,7 +83,7 @@ const ChatBox = ({ selectedChat, user }) => {
 
   return (
     <motion.div
-      className="w-3/4 flex flex-col justify-between bg-transparent p-6 rounded-xl shadow-lg"
+      className="w-3/4 flex flex-col justify-between bg-black p-6 rounded-xl shadow-lg"
       initial={{ opacity: 0, x: 50 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.4 }}
