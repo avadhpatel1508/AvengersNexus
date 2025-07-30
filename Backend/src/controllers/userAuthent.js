@@ -101,7 +101,9 @@ const login = async (req, res) => {
       secure: false,
     });
 
+    // ✅ Send token in response too
     res.status(200).json({
+      token, // ⬅️ This enables frontend to store in Redux
       user: {
         firstName: user.firstName,
         emailId: user.emailId,
@@ -115,6 +117,7 @@ const login = async (req, res) => {
     res.status(401).send("Error: " + err.message);
   }
 };
+
 
 // -------------------- Logout --------------------
 const logout = async (req, res) => {

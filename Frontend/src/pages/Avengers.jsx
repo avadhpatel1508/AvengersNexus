@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import axiosClient from '../utils/axiosClient';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import AdminNavbar from '../components/AdminNavbar';
 import UserNavbar from '../components/UserNavbar';
 import { useSelector } from 'react-redux';
@@ -41,28 +41,32 @@ function AvengersPage() {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: { staggerChildren: 0.1, delayChildren: 0.3 },
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.3,
+      },
     },
   };
 
   const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
+    hidden: { y: 30, opacity: 0 },
     visible: {
       y: 0,
       opacity: 1,
-      transition: { duration: 0.6, ease: 'easeOut' },
+      transition: {
+        duration: 0.8,
+        ease: 'easeOut',
+      },
     },
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-black text-white relative overflow-hidden">
-      {user?.role === 'admin' ? <AdminNavbar /> : <UserNavbar />}
-
-      {/* Dynamic Background */}
+    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+      {/* Background Effects */}
       <div className="fixed inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-black to-blue-950"></div>
 
-        <div className="absolute inset-0 opacity-10">
+        <div className="absolute inset-0 opacity-20">
           <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
             <defs>
               <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
@@ -79,110 +83,116 @@ function AvengersPage() {
           </svg>
         </div>
 
-        {/* Spotlight */}
         <motion.div
-          className="absolute w-96 h-96 rounded-full"
+          className="absolute w-96 h-96 rounded-full pointer-events-none"
           style={{
             left: mousePosition.x - 192,
             top: mousePosition.y - 192,
-            background: 'radial-gradient(circle, rgba(220, 38, 38, 0.15) 0%, rgba(37, 99, 235, 0.1) 50%, transparent 70%)',
+            background:
+              'radial-gradient(circle, rgba(220, 38, 38, 0.08) 0%, rgba(37, 99, 235, 0.06) 50%, transparent 70%)',
           }}
           transition={{ type: 'spring', stiffness: 20, damping: 30 }}
         />
 
-        {/* Light beams */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/3 w-1 h-full bg-gradient-to-b from-red-500/20 to-transparent animate-pulse rotate-12"></div>
-          <div className="absolute top-0 right-1/4 w-1 h-full bg-gradient-to-b from-blue-500/20 to-transparent animate-pulse -rotate-6 delay-1000"></div>
+        {/* Rotating Star */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-5">
+          <div className="w-[60vw] max-w-[350px] h-[60vw] max-h-[350px] border-8 border-white rounded-full flex items-center justify-center animate-spin-very-slow">
+            <div className="w-64 h-64 border-8 border-red-500 rounded-full flex items-center justify-center">
+              <div className="w-32 h-32 border-8 border-blue-500 rounded-full flex items-center justify-center">
+                <div className="text-4xl sm:text-6xl text-white">★</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
+      {user?.role === 'admin' ? <AdminNavbar /> : <UserNavbar />}
+
       {/* Main Content */}
-      <div className="flex-grow flex flex-col justify-start relative z-10">
-        {/* Header */}
-        <motion.h2
-          className="text-5xl md:text-7xl font-black text-center uppercase tracking-widest mt-10 mb-12"
-          variants={itemVariants}
-          initial="hidden"
-          animate={isLoaded ? 'visible' : 'hidden'}
-        >
-          <span className="bg-gradient-to-r from-red-500 via-white to-blue-500 bg-clip-text text-transparent">
-            Avengers Roster
-          </span>
-        </motion.h2>
+      <div className="relative z-10 min-h-screen flex items-center py-4 px-4 sm:px-6"> {/* Reduced py-10 to py-4 */}
+        <div className="container mx-auto">
+        
 
-        {/* Error Message */}
-        {error && (
-          <motion.p
-            className="text-center text-sm text-red-400 mb-8"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            {error}
-          </motion.p>
-        )}
-
-        {/* Avengers Grid */}
-        <motion.div
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 max-w-7xl mx-auto px-6 mb-20"
-          variants={containerVariants}
-          initial="hidden"
-          animate={isLoaded ? 'visible' : 'hidden'}
-        >
-          {avengers.length === 0 && isLoaded ? (
+          {/* Error Message */}
+          {error && (
             <motion.p
-              className="col-span-full text-center text-xl text-gray-400"
+              className="text-center text-lg text-red-400 mb-10"
               variants={itemVariants}
+              initial="hidden"
+              animate={isLoaded ? 'visible' : 'hidden'}
             >
-              No Avengers Found.
+              {error}
             </motion.p>
-          ) : (
-            avengers.map((avenger) => (
-              <motion.div
-                key={avenger._id}
-                className="relative bg-gradient-to-br from-slate-800/60 via-black/40 to-slate-900/60 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-xl group hover:scale-105 transition duration-300"
-                variants={itemVariants}
-                whileHover={{ y: -10 }}
-              >
-                <div className="absolute top-4 left-4 w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
-                <div className="absolute top-4 right-4 w-3 h-3 bg-blue-500 rounded-full animate-ping delay-500"></div>
-
-                <h3 className="text-3xl font-bold mb-2 bg-gradient-to-r from-red-500 via-white to-blue-500 bg-clip-text text-transparent">
-                  {avenger.firstName}
-                </h3>
-                <p className="text-gray-300 mb-4 text-sm">{avenger.emailId}</p>
-
-                <div className="space-y-1 text-sm">
-                  <p>
-                    <span className="text-white font-semibold">🆔 ID:</span>{' '}
-                    <span className="text-gray-400">{avenger._id}</span>
-                  </p>
-                  <p>
-                    <span className="text-white font-semibold">🛡️ Role:</span>{' '}
-                    <span className={`font-bold ${avenger.role === 'admin' ? 'text-red-400' : 'text-blue-400'}`}>
-                      {avenger.role}
-                    </span>
-                  </p>
-                </div>
-              </motion.div>
-            ))
           )}
-        </motion.div>
+
+          {/* Avengers Grid */}
+          <motion.div
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 max-w-7xl mx-auto mb-10"
+            variants={containerVariants}
+            initial="hidden"
+            animate={isLoaded ? 'visible' : 'hidden'}
+          >
+            {avengers.length === 0 && isLoaded ? (
+              <motion.p
+                className="col-span-full text-center text-xl text-gray-400"
+                variants={itemVariants}
+              >
+                No Avengers Found.
+              </motion.p>
+            ) : (
+              avengers.map((avenger) => (
+                <motion.div
+                  key={avenger._id}
+                  className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/20 shadow-2xl perspective-1000"
+                  variants={itemVariants}
+                  whileHover={{ rotateY: 5, rotateX: 2, scale: 1.05 }}
+                  style={{ transformStyle: 'preserve-3d' }}
+                >
+                 
+                  <h3 className="text-3xl font-bold mb-4 bg-gradient-to-r from-red-500 via-white to-blue-500 bg-clip-text text-transparent">
+                    {avenger.firstName}
+                  </h3>
+                  <p className="text-gray-300 mb-6 text-md">{avenger.emailId}</p>
+
+                  <div className="space-y-2 text-md">
+                    <p>
+                      <span className="text-white font-semibold">🆔 ID:</span>{' '}
+                      <span className="text-gray-400">{avenger._id}</span>
+                    </p>
+                    <p>
+                      <span className="text-white font-semibold">🛡️ Role:</span>{' '}
+                      <span
+                        className={`font-bold ${
+                          avenger.role === 'admin' ? 'text-red-400' : 'text-blue-400'
+                        }`}
+                      >
+                        {avenger.role}
+                      </span>
+                    </p>
+                  </div>
+                </motion.div>
+              ))
+            )}
+          </motion.div>
+        </div>
       </div>
 
-      {/* Footer */}
       <Footer />
 
-      {/* Custom Animations */}
       <style jsx>{`
-        @keyframes grid-move {
-          0% {
-            transform: translate(0, 0);
+        @keyframes spin-very-slow {
+          from {
+            transform: rotate(0deg);
           }
-          100% {
-            transform: translate(50px, 50px);
+          to {
+            transform: rotate(360deg);
           }
+        }
+        .animate-spin-very-slow {
+          animation: spin-very-slow 60s linear infinite;
+        }
+        .perspective-1000 {
+          perspective: 1000px;
         }
       `}</style>
     </div>

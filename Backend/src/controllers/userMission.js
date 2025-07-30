@@ -4,49 +4,84 @@ const jwt = require("jsonwebtoken");
 const validate = require("../utils/validator");
 const mongoose = require('mongoose')
 const User = require("../models/user")
+const Chat = require('../models/Chat');
+const Message = require('../models/Message')
 require("dotenv").config();
 
 // Create Mission (Admin only)
-const CreateMission = async (req, res) => {
+const CreateMission = (io) => async (req, res) => {
+ 
+
   try {
     const { title, description, Location, avengersAssigned, difficulty, amount } = req.body;
+ 
 
-    // Check for missing fields
-    if (!title || !description || !Location || !avengersAssigned || !difficulty || !amount) {
+    // Validate required fields
+    if (!title || !description || !Location || !avengersAssigned?.length || !difficulty || !amount) {
       return res.status(400).json({ message: "Missing required fields." });
     }
 
-  
-  
+    const adminId = req.user?._id;
+    if (!adminId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
 
-    // Create paymentInfo for each avenger
-    const paymentInfo = avengersAssigned.map(avengerId => ({
-      user: avengerId,
-      amount: amount,
-      paymentIntentId: "", // not using Stripe now
+    // Create payment info for each assigned user
+    const paymentInfo = avengersAssigned.map(userId => ({
+      user: userId,
+      amount,
+      paymentIntentId: "",
       status: "pending",
-      paidAt: null
+      paidAt: null,
     }));
 
-    // Create mission
-    const newMission = new Mission({
+    // Create new mission
+    const newMission = await Mission.create({
       title,
       description,
-      Location,
+      Location, // fixed from 'Location' to 'Location'
       avengersAssigned,
       difficulty,
-      amount, 
-      paymentInfo
+      amount,
+      paymentInfo,
+      createdBy: adminId,
     });
 
-    await newMission.save();
+    // Create group chat
+    const participants = [adminId, ...avengersAssigned];
+    const newChat = await Chat.create({
+      mission: newMission._id,
+      participants,
+      groupName: title,
+      lastMessage: `Group created for mission: ${title}`,
+    });
 
-    res.status(201).json({ message: "Mission created successfully", mission: newMission });
+    // Emit socket event to each user room
+    participants.forEach(userId => {
+      io.to(userId.toString()).emit("groupCreated", {
+        chatId: newChat._id,
+        groupName: title,
+        missionId: newMission._id,
+        participants,
+        createdAt: newChat.createdAt,
+      });
+    });
+
+    // Final response
+    res.status(201).json({
+      success: true,
+      message: "Mission and chat group created successfully.",
+      mission: newMission,
+      chat: newChat,
+    });
+
   } catch (error) {
-    console.error("Create Mission Error:", error.message);
-    res.status(500).json({ message: "Internal Server Error" });
+    console.error("❌ Create Mission Error:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
+
+
 // Update Mission (Admin only)
 const UpdateMission = async (req, res) => {
     try {

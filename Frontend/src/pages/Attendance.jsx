@@ -143,32 +143,7 @@ const Attendance = () => {
           <div className="absolute top-0 left-2/3 w-1 h-full bg-gradient-to-b from-white/20 via-transparent to-transparent transform rotate-6 animate-pulse delay-2000"></div>
         </div>
 
-        <div className="absolute inset-0">
-          {[...Array(30)].map((_, i) => (
-            <motion.div
-              key={i}
-              className={`absolute w-2 h-2 rounded-full ${
-                i % 3 === 0 ? 'bg-red-500/40' :
-                i % 3 === 1 ? 'bg-blue-500/40' : 'bg-white/40'
-              }`}
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-              }}
-              animate={{
-                y: [0, -30, 0],
-                opacity: [0.2, 0.8, 0.2],
-                scale: [0.5, 1.2, 0.5],
-              }}
-              transition={{
-                duration: 3 + Math.random() * 4,
-                repeat: Infinity,
-                delay: Math.random() * 3,
-                ease: "easeInOut",
-              }}
-            />
-          ))}
-        </div>
+        
 
         <motion.div
           className="absolute w-96 h-96 rounded-full"
@@ -194,19 +169,7 @@ const Attendance = () => {
       {user?.role === 'admin' ? <AdminNavbar /> : <UserNavbar />}
 
       <div className="relative z-10 p-8 py-10 px-4 sm:px-6">
-        <motion.h2
-          className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-center uppercase tracking-widest mb-12"
-          variants={itemVariants}
-          initial="hidden"
-          animate={isLoaded ? "visible" : "hidden"}
-        >
-          <motion.span
-            className="block bg-gradient-to-r from-red-500 via-white to-blue-500 bg-clip-text text-transparent"
-            whileHover={{ textShadow: "0 0 20px rgba(255,255,255,0.5)" }}
-          >
-            Attendance Viewer
-          </motion.span>
-        </motion.h2>
+        
 
         <motion.div
           className="flex justify-center gap-6 mb-8"
@@ -229,7 +192,7 @@ const Attendance = () => {
             {viewMode === 'calendar' && (
               <motion.div
                 className="absolute inset-0 bg-white/30 rounded-lg"
-                animate={{ scale: [1, 1.2, 1] }}
+               
                 transition={{ duration: 2, repeat: Infinity }}
               />
             )}
@@ -249,7 +212,7 @@ const Attendance = () => {
             {viewMode === 'graph' && (
               <motion.div
                 className="absolute inset-0 bg-white/30 rounded-lg"
-                animate={{ scale: [1, 1.2, 1] }}
+              
                 transition={{ duration: 2, repeat: Infinity }}
               />
             )}
@@ -411,10 +374,7 @@ const Attendance = () => {
               style={{ transformStyle: "preserve-3d" }}
               variants={itemVariants}
             >
-              <div className="absolute top-6 left-6 w-4 h-4 bg-red-500 rounded-full animate-ping"></div>
-              <div className="absolute top-6 right-6 w-4 h-4 bg-blue-500 rounded-full animate-ping delay-300"></div>
-              <div className="absolute bottom-6 left-6 w-4 h-4 bg-white rounded-full animate-ping delay-600"></div>
-              <div className="absolute bottom-6 right-6 w-4 h-4 bg-red-500 rounded-full animate-ping delay-900"></div>
+              
               <ResponsiveContainer width="100%" height={400}>
                 <BarChart
                   data={monthlyData}

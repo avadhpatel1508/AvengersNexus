@@ -1,7 +1,6 @@
 import { NavLink } from 'react-router';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../authSlice';
-import { motion } from 'framer-motion';
 import { useState } from 'react';
 
 function AdminNavbar() {
@@ -18,6 +17,8 @@ function AdminNavbar() {
         { to: '/missions', label: 'Missions' },
         { to: '/attendance', label: 'Attendance' },
         { to: '/avengers', label: 'Avengers' },
+        { to: '/feedbacks', label: 'Feedback' },
+        { to: '/chats', label: 'Chat' }
     ];
 
     const adminLinks = [
@@ -28,20 +29,15 @@ function AdminNavbar() {
     ];
 
     return (
-        <motion.nav
-            className="relative z-50 flex justify-between items-center p-6 backdrop-blur-xl bg-black/20 border-b border-white/10"
-            initial={{ y: -100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 1 }}
-        >
+        <nav className="relative z-50 flex justify-between items-center p-6 backdrop-blur-xl bg-black/20 border-b border-white/10">
             {/* Logo */}
             <NavLink to="/" className="flex items-center space-x-3" onClick={() => setIsMobileMenuOpen(false)}>
-                <motion.div whileHover={{ scale: 1.05 }} className="flex items-center space-x-3">
+                <div className="flex items-center space-x-3">
                     <div className="relative">
                         <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 via-white to-purple-500 rounded-full flex items-center justify-center shadow-2xl">
                             <span className="text-black font-black text-xl">⚡</span>
                         </div>
-                        <div className="absolute inset-0 bg-gradient-to-br from-cyan-400 to-purple-500 rounded-full blur opacity-40 animate-pulse"></div>
+                        <div className="absolute inset-0 bg-gradient-to-br from-cyan-400 to-purple-500 rounded-full blur opacity-40"></div>
                     </div>
                     <div>
                         <div className="text-2xl font-black bg-gradient-to-r from-cyan-400 via-white to-purple-500 bg-clip-text text-transparent">
@@ -49,49 +45,39 @@ function AdminNavbar() {
                         </div>
                         <div className="text-xs text-gray-400 tracking-widest">AVENGERS HQ</div>
                     </div>
-                </motion.div>
+                </div>
             </NavLink>
 
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center space-x-6">
                 {menuItems.map((item, index) => (
-                    <motion.div
-                        key={item.to}
-                        initial={{ y: -20, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        transition={{ delay: 0.1 * index }}
-                        whileHover={{ scale: 1.1 }}
-                    >
+                    <div key={item.to}>
                         <NavLink
                             to={item.to}
-                            className="relative text-white font-bold tracking-wider hover:text-cyan-400 transition-all duration-300 group"
+                            className={({ isActive }) =>
+                                `relative text-white font-bold tracking-wider hover:text-cyan-400 transition-all duration-300 ${isActive ? 'underline underline-offset-4 decoration-2 decoration-gradient-to-r from-cyan-400 to-purple-500' : ''}`
+                            }
                         >
                             {item.label}
-                            <motion.div
-                                className="absolute -bottom-2 left-0 h-0.5 bg-gradient-to-r from-cyan-400 to-purple-500"
-                                initial={{ width: 0 }}
-                                whileHover={{ width: '100%' }}
-                                transition={{ duration: 0.3 }}
-                            />
                         </NavLink>
-                    </motion.div>
+                    </div>
                 ))}
 
                 {/* Admin Dropdown */}
                 <div className="relative group">
-                    <motion.div
+                    <div
                         className="cursor-pointer px-4 py-2 bg-gradient-to-r from-cyan-600/20 to-purple-600/20 border border-white/20 rounded-lg text-white font-semibold hover:bg-gradient-to-r hover:from-cyan-600/30 hover:to-purple-600/30 transition-all duration-300"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
                     >
                         {user?.firstName || 'Director'}
-                    </motion.div>
+                    </div>
                     <ul className="absolute right-0 mt-2 bg-black/90 backdrop-blur-xl text-white rounded-lg shadow-2xl py-2 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 w-52 border border-white/10">
                         {adminLinks.map(link => (
                             <li key={link.to}>
                                 <NavLink
                                     to={link.to}
-                                    className="block px-4 py-2 hover:bg-cyan-600/20 transition-colors"
+                                    className={({ isActive }) =>
+                                        `block px-4 py-2 hover:bg-cyan-600/20 transition-colors ${isActive ? 'underline underline-offset-4 decoration-2 decoration-gradient-to-r from-cyan-400 to-purple-500' : ''}`
+                                    }
                                 >
                                     {link.label}
                                 </NavLink>
@@ -110,30 +96,28 @@ function AdminNavbar() {
             </div>
 
             {/* Mobile Toggle */}
-            <motion.button
+            <button
                 className="md:hidden relative group"
-                whileTap={{ scale: 0.9 }}
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
                 <div className="w-8 h-8 flex flex-col justify-center space-y-1">
-                    <motion.div className="w-full h-0.5 bg-white origin-center" whileHover={{ scaleX: 1.2 }}></motion.div>
-                    <motion.div className="w-full h-0.5 bg-white origin-center" whileHover={{ scaleX: 0.8 }}></motion.div>
-                    <motion.div className="w-full h-0.5 bg-white origin-center" whileHover={{ scaleX: 1.2 }}></motion.div>
+                    <div className="w-full h-0.5 bg-white"></div>
+                    <div className="w-full h-0.5 bg-white"></div>
+                    <div className="w-full h-0.5 bg-white"></div>
                 </div>
-            </motion.button>
+            </button>
 
             {/* Mobile Menu */}
-            <motion.div
+            <div
                 className={`absolute top-full left-0 right-0 md:hidden bg-black/90 backdrop-blur-xl border-t border-white/10 rounded-b-lg overflow-hidden transition-all duration-300 ${isMobileMenuOpen ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: isMobileMenuOpen ? 1 : 0 }}
-                transition={{ duration: 0.3 }}
             >
                 {[...menuItems, ...adminLinks].map(link => (
                     <NavLink
                         key={link.to}
                         to={link.to}
-                        className="block px-4 py-3 text-white hover:bg-cyan-600/20 transition-colors"
+                        className={({ isActive }) =>
+                            `block px-4 py-3 text-white hover:bg-cyan-600/20 transition-colors ${isActive ? 'underline underline-offset-4 decoration-2 decoration-gradient-to-r from-cyan-400 to-purple-500' : ''}`
+                        }
                         onClick={() => setIsMobileMenuOpen(false)}
                     >
                         {link.label}
@@ -148,8 +132,8 @@ function AdminNavbar() {
                 >
                     Logout
                 </button>
-            </motion.div>
-        </motion.nav>
+            </div>
+        </nav>
     );
 }
 

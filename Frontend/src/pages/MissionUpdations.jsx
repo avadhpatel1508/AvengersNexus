@@ -104,10 +104,17 @@ const MissionUpdations = () => {
         return;
       }
 
-      await axiosClient.post('/mission/create', {
-        ...formData,
-        amount: Number(formData.amount),
-      });
+      const { title, description, Location, avengersAssigned, difficulty, amount } = formData;
+
+    await axiosClient.post('/mission/create', {
+      title,
+      description,
+      Location,
+      avengersAssigned,
+      difficulty,
+      amount: Number(amount),
+    });
+
 
       setSuccess('✅ Mission created!');
       setFormData({

@@ -2,33 +2,41 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import UserNavbar from '../components/UserNavbar';
 import Footer from '../components/Footer';
-import firstImg from '../assets/first.jpg?w=800&h=600&fit=crop'
-import secondImg from '../assets/second.jpg?w=800&h=600&fit=crop'
-import thirdImg from '../assets/third.jpg?w=800&h=600&fit=crop'
+import axiosClient from '../utils/axiosClient'; // ✅ Make sure this exists and is correctly configured
+
+import firstImg from '../assets/first.jpg?w=800&h=600&fit=crop';
+import secondImg from '../assets/second.jpg?w=800&h=600&fit=crop';
+import thirdImg from '../assets/third.jpg?w=800&h=600&fit=crop';
+
 const Homepage = () => {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [feedback, setFeedback] = useState('');
+  const [status, setStatus] = useState('');
 
   const heroSlides = [
-  {
-    image: firstImg,
-    title: "STEVE ROGERS",
-    subtitle: "THE MAN BEHIND THE SHIELD",
-    description: "Steve Rogers started as a humble kid from Brooklyn with a brave heart, long before he wore the red, white, and blue."
-  },
-  {
-    image: secondImg,
-    title: "CAPTAIN AMERICA",
-    subtitle: "THE SYMBOL OF FREEDOM",
-    description: "As Captain America, Steve led the Avengers and became a beacon of hope, justice, and resilience across generations."
-  },
+    {
+      image: firstImg,
+      title: 'STEVE ROGERS',
+      subtitle: 'THE MAN BEHIND THE SHIELD',
+      description:
+        'Steve Rogers started as a humble kid from Brooklyn with a brave heart, long before he wore the red, white, and blue.',
+    },
+    {
+      image: secondImg,
+      title: 'CAPTAIN AMERICA',
+      subtitle: 'THE SYMBOL OF FREEDOM',
+      description:
+        'As Captain America, Steve led the Avengers and became a beacon of hope, justice, and resilience across generations.',
+    },
     {
       image: thirdImg,
-      title: "THE SHIELD",
-      subtitle: "VIBRANIUM LEGACY",
-      description: "Forged from vibranium, Captain America's shield is both his primary weapon and symbol of justice."
-    }
+      title: 'THE SHIELD',
+      subtitle: 'VIBRANIUM LEGACY',
+      description:
+        "Forged from vibranium, Captain America's shield is both his primary weapon and symbol of justice.",
+    },
   ];
 
   useEffect(() => {
@@ -48,6 +56,33 @@ const Homepage = () => {
     };
   }, []);
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setStatus('');
+
+    if (!feedback.trim()) {
+      setStatus('⚠️ Feedback cannot be empty.');
+      return;
+    }
+
+    try {
+      setStatus('Sending...');
+      const response = await axiosClient.post('/feedback/feedback', {
+        message: feedback,
+      });
+
+      if (response.status === 200 || response.status === 201) {
+        setFeedback('');
+        setStatus('✅ Thank you for your feedback!');
+      } else {
+        setStatus('❌ Something went wrong. Please try again later.');
+      }
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      setStatus('❌ Server error. Please try again later.');
+    }
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -66,7 +101,7 @@ const Homepage = () => {
       opacity: 1,
       transition: {
         duration: 0.8,
-        ease: "easeOut",
+        ease: 'easeOut',
       },
     },
   };
@@ -74,12 +109,12 @@ const Homepage = () => {
   const slideVariants = {
     enter: { x: 1000, opacity: 0 },
     center: { x: 0, opacity: 1 },
-    exit: { x: -1000, opacity: 0 }
+    exit: { x: -1000, opacity: 0 },
   };
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
-      {/* Background */}
+      {/* Background Effects */}
       <div className="fixed inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-black to-blue-950"></div>
 
@@ -100,23 +135,18 @@ const Homepage = () => {
           </svg>
         </div>
 
-        <div className="absolute inset-0">
-          <div className="absolute top-0 left-1/4 w-1 h-full bg-gradient-to-b from-red-500/30 via-transparent to-transparent transform rotate-12 animate-pulse"></div>
-          <div className="absolute top-0 right-1/3 w-1 h-full bg-gradient-to-b from-blue-500/30 via-transparent to-transparent transform -rotate-12 animate-pulse delay-1000"></div>
-          <div className="absolute top-0 left-2/3 w-1 h-full bg-gradient-to-b from-white/20 via-transparent to-transparent transform rotate-6 animate-pulse delay-2000"></div>
-        </div>
-
         <motion.div
-          className="absolute w-96 h-96 rounded-full"
+          className="absolute w-96 h-96 rounded-full pointer-events-none"
           style={{
             left: mousePosition.x - 192,
             top: mousePosition.y - 192,
-            background: 'radial-gradient(circle, rgba(220, 38, 38, 0.08) 0%, rgba(37, 99, 235, 0.06) 50%, transparent 70%)',
-
+            background:
+              'radial-gradient(circle, rgba(220, 38, 38, 0.08) 0%, rgba(37, 99, 235, 0.06) 50%, transparent 70%)',
           }}
-          transition={{ type: "spring", stiffness: 20, damping: 30 }}
+          transition={{ type: 'spring', stiffness: 20, damping: 30 }}
         />
 
+        {/* Rotating Star */}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-5">
           <div className="w-[60vw] max-w-[350px] h-[60vw] max-h-[350px] border-8 border-white rounded-full flex items-center justify-center animate-spin-very-slow">
             <div className="w-64 h-64 border-8 border-red-500 rounded-full flex items-center justify-center">
@@ -130,12 +160,14 @@ const Homepage = () => {
 
       <UserNavbar />
 
+      {/* Hero Section */}
       <div className="relative z-10 min-h-screen flex items-center py-10 px-4 sm:px-6">
         <div className="container mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+          {/* Text Block */}
           <motion.div
             variants={containerVariants}
             initial="hidden"
-            animate={isLoaded ? "visible" : "hidden"}
+            animate={isLoaded ? 'visible' : 'hidden'}
             className="space-y-10 text-center md:text-left"
           >
             <motion.div variants={itemVariants} className="space-y-6">
@@ -148,7 +180,7 @@ const Homepage = () => {
                   exit="exit"
                   className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-tight"
                 >
-                  <motion.span className="block text-white" whileHover={{ textShadow: "0 0 20px rgba(255,255,255,0.5)" }}>
+                  <motion.span className="block text-white" whileHover={{ textShadow: '0 0 20px rgba(255,255,255,0.5)' }}>
                     {heroSlides[currentSlide].title}
                   </motion.span>
                   <motion.span className="block bg-gradient-to-r from-red-500 via-white to-blue-500 bg-clip-text text-transparent" whileHover={{ scale: 1.02 }}>
@@ -171,6 +203,7 @@ const Homepage = () => {
               </motion.p>
             </AnimatePresence>
 
+            {/* Slider Dots */}
             <motion.div variants={itemVariants} className="flex flex-wrap justify-center md:justify-start items-center gap-3">
               {heroSlides.map((_, index) => (
                 <motion.button
@@ -197,25 +230,19 @@ const Homepage = () => {
             </motion.div>
           </motion.div>
 
+          {/* Image Card */}
           <motion.div
             className="relative"
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 1.5, ease: "easeOut" }}
+            transition={{ duration: 1.5, ease: 'easeOut' }}
           >
             <div className="relative group perspective-1000">
-
-
               <motion.div
                 className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/20 shadow-2xl"
                 whileHover={{ rotateY: 5, rotateX: 2 }}
-                style={{ transformStyle: "preserve-3d" }}
+                style={{ transformStyle: 'preserve-3d' }}
               >
-                <div className="absolute top-6 left-6 w-4 h-4 sm:w-6 sm:h-6 bg-red-500 rounded-full animate-ping"></div>
-                <div className="absolute top-6 right-6 w-4 h-4 sm:w-6 sm:h-6 bg-blue-500 rounded-full animate-ping delay-300"></div>
-                <div className="absolute bottom-6 left-6 w-4 h-4 sm:w-6 sm:h-6 bg-white rounded-full animate-ping delay-600"></div>
-                <div className="absolute bottom-6 right-6 w-4 h-4 sm:w-6 sm:h-6 bg-red-500 rounded-full animate-ping delay-900"></div>
-
                 <div className="relative overflow-hidden rounded-2xl">
                   <AnimatePresence mode="wait">
                     <motion.img
@@ -231,11 +258,10 @@ const Homepage = () => {
                       whileHover={{ scale: 1.05 }}
                     />
                   </AnimatePresence>
-
                   <motion.div
                     className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent"
-                    animate={{ x: ["-100%", "100%"] }}
-                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                    animate={{ x: ['-100%', '100%'] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
                   />
                 </div>
               </motion.div>
@@ -244,19 +270,48 @@ const Homepage = () => {
         </div>
       </div>
 
-      <motion.div
-        className="fixed bottom-8 right-8 z-50"
-        initial={{ scale: 0, rotate: -360 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ delay: 2.5, duration: 1, type: "spring" }}
-      >
-        
-      </motion.div>
+      {/* Feedback Section */}
+      <div className="relative z-10 px-4 py-16 sm:px-6 lg:px-8 bg-transparent border-t border-white/10">
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1 }}
+          viewport={{ once: true }}
+          className="max-w-3xl mx-auto text-center"
+        >
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">We'd love your feedback</h2>
+          <p className="text-gray-400 mb-8 text-lg">
+            Share your thoughts about this page or anything you'd like us to improve.
+          </p>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <textarea
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              className="w-full p-4 rounded-lg bg-slate-800 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows="5"
+              placeholder="Type your feedback here..."
+            />
+            <button
+              type="submit"
+              className="bg-gradient-to-r from-red-500 to-blue-500 text-white font-semibold px-6 py-3 rounded-lg hover:scale-105 transition-transform duration-300"
+            >
+              Submit Feedback
+            </button>
+            {status && <p className="text-green-400 mt-2">{status}</p>}
+          </form>
+        </motion.div>
+      </div>
+
+      <Footer />
 
       <style jsx>{`
         @keyframes spin-very-slow {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
         }
         .animate-spin-very-slow {
           animation: spin-very-slow 60s linear infinite;
@@ -265,8 +320,6 @@ const Homepage = () => {
           perspective: 1000px;
         }
       `}</style>
-
-      <Footer />
     </div>
   );
 };

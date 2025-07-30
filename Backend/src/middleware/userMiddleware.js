@@ -21,7 +21,7 @@ const userMiddleware = async (req, res, next) => {
         if (!result) throw new Error("User does not exist");
         console.log("Cookies received: ", req.cookies);
 
-        req.result = result; // Attach the user to request
+        req.user = result; // Attach the user to request
         next();
     } catch (error) {
         res.status(401).send("Unauthorized access: " + error.message);

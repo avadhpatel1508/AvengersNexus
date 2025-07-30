@@ -1,12 +1,15 @@
+// socket/socket.js
 import { io } from 'socket.io-client';
 
-let socket;
+let socket = null;
 
 export const initializeSocket = (token) => {
   if (!socket) {
     socket = io('http://localhost:4000', {
-      auth: { token },
       withCredentials: true,
+      auth: {
+        token,
+      },
     });
 
     socket.on('connect', () => {
@@ -19,4 +22,17 @@ export const initializeSocket = (token) => {
   }
 };
 
-export const getSocket = () => socket;
+export const getSocket = () => {
+  if (!socket) {
+    console.warn('⚠️ getSocket called before initialization');
+  }
+  return socket;
+};
+
+export const resetSocket = () => {
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+    console.log('🔄 Socket reset');
+  }
+};

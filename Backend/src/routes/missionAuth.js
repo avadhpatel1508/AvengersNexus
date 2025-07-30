@@ -1,5 +1,4 @@
 const express = require('express');
-const missionRouter = express.Router();
 const adminMiddleware = require('../middleware/adminMiddleware');
 const userMiddleware = require("../middleware/userMiddleware");
 
@@ -14,19 +13,24 @@ const {
   getRewardsByUser
 } = require('../controllers/userMission');
 
-// Admin routes
-missionRouter.post('/create', adminMiddleware, CreateMission);
-missionRouter.patch('/:id', adminMiddleware, UpdateMission);
-missionRouter.delete('/:id', adminMiddleware, DeleteMission);
+module.exports = (io) => {
+  const missionRouter = express.Router();
 
-// Complete mission route (admin only)
-missionRouter.patch('/complete/:id', adminMiddleware, completeMissionById);
+  // Admin routes
+  missionRouter.post('/create', adminMiddleware, CreateMission(io));
+  missionRouter.patch('/:id', adminMiddleware, UpdateMission);
+  missionRouter.delete('/:id', adminMiddleware, DeleteMission);
 
-// User + Admin routes
-missionRouter.get('/getAllMission', userMiddleware, getAllMission);
-missionRouter.get('/missionCompletedByUser', userMiddleware, getCompletedMissionsByUser);
+  // Complete mission route (admin only)
+  missionRouter.patch('/complete/:id', adminMiddleware, completeMissionById);
 
-// Dynamic route should be last
-missionRouter.get('/:id', userMiddleware, getMissionById);
-missionRouter.get('/getRewardsByUser/:userId', getRewardsByUser )
-module.exports = missionRouter;
+  // User + Admin routes
+  missionRouter.get('/getAllMission', userMiddleware, getAllMission);
+  missionRouter.get('/missionCompletedByUser', userMiddleware, getCompletedMissionsByUser);
+
+  // Dynamic routes should be last
+  missionRouter.get('/getRewardsByUser/:userId', getRewardsByUser);
+  missionRouter.get('/:id', userMiddleware, getMissionById);
+
+  return missionRouter;
+};

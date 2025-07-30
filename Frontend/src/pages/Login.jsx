@@ -141,11 +141,7 @@ function Login() {
               whileHover={{ rotateY: 5, rotateX: 2 }}
               style={{ transformStyle: "preserve-3d" }}
             >
-              <div className="absolute top-6 left-6 w-4 h-4 sm:w-6 sm:h-6 bg-red-500 rounded-full animate-ping"></div>
-              <div className="absolute top-6 right-6 w-4 h-4 sm:w-6 sm:h-6 bg-blue-500 rounded-full animate-ping delay-300"></div>
-              <div className="absolute bottom-6 left-6 w-4 h-4 sm:w-6 sm:h-6 bg-white rounded-full animate-ping delay-600"></div>
-              <div className="absolute bottom-6 right-6 w-4 h-4 sm:w-6 sm:h-6 bg-red-500 rounded-full animate-ping delay-900"></div>
-
+             
               <motion.h2
                 variants={itemVariants}
                 className="text-3xl sm:text-4xl font-black text-center mb-8 bg-gradient-to-r from-red-500 via-white to-blue-500 bg-clip-text text-transparent"
