@@ -8,11 +8,10 @@ import { useNavigate, NavLink } from 'react-router';
 import { registerUser } from '../authSlice';
 import axiosClient from '../utils/axiosClient';
 
-
 const signupSchema = z.object({
-  firstName: z.string().min(3, "Minimum character should be 3"),
-  emailId: z.string().email("Invalid Email"),
-  passWord: z.string().min(8, "Password is too weak"),
+  firstName: z.string().min(3, "First name must be at least 3 characters"),
+  emailId: z.string().email("Please enter a valid email address"),
+  passWord: z.string().min(8, "Password must be at least 8 characters long"),
 });
 
 function Signup() {
@@ -52,7 +51,7 @@ function Signup() {
 
   const onSubmit = async (data) => {
     if (!isEmailVerified) {
-      alert('Please verify your email before signing up.');
+      setOtpMessage('Please verify your email before signing up.');
       return;
     }
     try {
@@ -62,18 +61,22 @@ function Signup() {
         navigate('/login');
       } else {
         const errMsg = resultAction.payload?.message || "Signup failed.";
-        alert(`❌ ${errMsg}`);
+        if (errMsg.includes('exists')) {
+          setOtpMessage('❌ This email is already registered. Please use a different email.');
+        } else {
+          setOtpMessage(`❌ ${errMsg}`);
+        }
       }
     } catch (err) {
       console.error("Signup error:", err);
-      alert("❌ Something went wrong.");
+      setOtpMessage("❌ An unexpected error occurred. Please try again.");
     }
   };
 
   const sendOtp = async () => {
     try {
       if (!emailValue) {
-        alert("Please enter a valid email first.");
+        setOtpMessage("Please enter a valid email first.");
         return;
       }
       const normalizedEmail = emailValue.trim().toLowerCase();
@@ -81,11 +84,15 @@ function Signup() {
       if (res.status === 200) {
         setOtpSent(true);
         setOtp(['', '', '', '']);
-        setOtpMessage('OTP sent to your email!');
+        setOtpMessage('✅ OTP sent to your email! Please check your inbox.');
       }
     } catch (err) {
       console.error("Send OTP failed:", err);
-      setOtpMessage('Failed to send OTP.');
+      if (err.response?.data?.message?.includes('exists')) {
+        setOtpMessage('❌ This email is already registered. Please use a different email.');
+      } else {
+        setOtpMessage('❌ Failed to send OTP. Please try again.');
+      }
     }
   };
 
@@ -106,7 +113,7 @@ function Signup() {
   const verifyOtp = async () => {
     const fullOtp = otp.join('');
     if (fullOtp.length !== 4) {
-      setOtpMessage("Enter all 4 digits.");
+      setOtpMessage("Please enter all 4 digits of the OTP.");
       return;
     }
     try {
@@ -120,11 +127,11 @@ function Signup() {
         setIsEmailVerified(true);
         setOtpMessage("✅ Email verified successfully!");
       } else {
-        setOtpMessage("❌ Invalid OTP. Try again.");
+        setOtpMessage("❌ Invalid OTP. Please try again.");
       }
     } catch (err) {
       console.error("OTP Verification Error:", err);
-      setOtpMessage("OTP verification failed.");
+      setOtpMessage("❌ OTP verification failed. Please try again.");
     } finally {
       setVerifyingOtp(false);
     }
@@ -199,7 +206,6 @@ function Signup() {
         </div>
       </div>
 
-
       <div className="relative z-10 min-h-screen flex items-center justify-center py-10 px-4 sm:px-6">
         <motion.div
           variants={containerVariants}
@@ -218,8 +224,6 @@ function Signup() {
               whileHover={{ rotateY: 5, rotateX: 2 }}
               style={{ transformStyle: "preserve-3d" }}
             >
-             
-
               <motion.h2
                 variants={itemVariants}
                 className="text-3xl sm:text-4xl font-black text-center mb-8 bg-gradient-to-r from-red-500 via-white to-blue-500 bg-clip-text text-transparent"
@@ -247,19 +251,27 @@ function Signup() {
                       type="email"
                       placeholder="tony@starkindustries.com"
                       {...register('emailId')}
-                      disabled={isEmailVerified}
+                      disabled={isEmailVerified || otpSent}
                       className={`flex-1 p-3 rounded-lg bg-black/70 text-white border ${errors.emailId ? 'border-red-500' : 'border-white/30'} focus:outline-none focus:border-cyan-400 transition-all duration-300`}
                     />
-                    <motion.button
-                      type="button"
-                      onClick={sendOtp}
-                      disabled={isEmailVerified}
-                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-red-500 to-blue-500 text-white font-semibold disabled:opacity-50 shadow-lg"
-                      whileHover={{ scale: 1.05, boxShadow: "0 0 15px rgba(255,255,255,0.3)" }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      {isEmailVerified ? "Verified" : "Verify"}
-                    </motion.button>
+                    {!otpSent && !isEmailVerified && (
+                      <motion.button
+                        type="button"
+                        onClick={sendOtp}
+                        disabled={isEmailVerified}
+                        className="px-4 py-2 rounded-lg bg-gradient-to-r from-red-500 to-blue-500 text-white font-semibold disabled:opacity-50 shadow-lg"
+                        whileHover={{ scale: 1.05, boxShadow: "0 0 15px rgba(255,255,255,0.3)" }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        Verify
+                      </motion.button>
+                    )}
+                    {otpSent && !isEmailVerified && (
+                      <span className="px-4 py-2 text-cyan-400 font-semibold">OTP Sent</span>
+                    )}
+                    {isEmailVerified && (
+                      <span className="px-4 py-2 text-green-400 font-semibold">Verified</span>
+                    )}
                   </div>
                   {errors.emailId && <span className="text-red-400 text-sm">{errors.emailId.message}</span>}
                 </motion.div>
@@ -357,8 +369,6 @@ function Signup() {
           </div>
         </motion.div>
       </div>
-
-      
 
       <style jsx>{`
         @keyframes spin-very-slow {

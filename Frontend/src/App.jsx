@@ -16,11 +16,10 @@ import Avengers from "./pages/Avengers";
 import AttendanceStart from './components/Attendance/AttendanceStart';
 import AttendanceSubmit from './components/Attendance/AttendanceSubmit';
 import Attendance from "./pages/Attendance";
-import FeedbackForm from "./pages/userFeedback";
 import UserReward from './pages/UserReward';
 import AdminFeedbackPage from "./pages/Feedbackupdations";
-import ChatPage from "./pages/ChatPage";
-
+import ChatPage from "./pages/chatPage";
+import ProfilePage from "./pages/profilePage";
 import { initializeSocket, resetSocket } from './socket/socket';
 
 function App() {
@@ -90,6 +89,8 @@ console.log("🧪 user token:", user?.token);
       <Route path="/attendance" element={isAuthenticated ? <Attendance /> : <Navigate to="/signup" />} />
       <Route path="/feedbacks" element={isAuthenticated ? <AdminFeedbackPage /> : <Navigate to="/signup" />} />
       <Route path="/chats" element={isAuthenticated ? <ChatPage /> : <Navigate to="/signup" />} />
+      <Route path="/profile" element={isAuthenticated ? <ProfilePage /> : <Navigate to="/signup" />} />
+
     </Routes>
   );
 }

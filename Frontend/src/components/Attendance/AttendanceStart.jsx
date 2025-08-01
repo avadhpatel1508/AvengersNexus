@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { initializeSocket, getSocket } from '../../socket/socket';
-import { FaBolt, FaClock, FaUserCheck } from 'react-icons/fa';
+import { FaBolt, FaClock } from 'react-icons/fa';
 import Footer from '../Footer';
 import AdminNavbar from '../AdminNavbar';
 import UserNavbar from '../UserNavbar';
@@ -18,7 +18,6 @@ const AttendanceStart = ({ adminId, token }) => {
   const [attendanceStarted, setAttendanceStarted] = useState(false);
   const [attendanceOver, setAttendanceOver] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [liveAttendees, setLiveAttendees] = useState([]);
   const [absentMarked, setAbsentMarked] = useState(false);
 
   useEffect(() => {
@@ -26,27 +25,17 @@ const AttendanceStart = ({ adminId, token }) => {
     const socket = getSocket();
     if (!socket) return;
 
-    const handleUserAttended = ({ userId, name, email }) => {
-      console.log('👥 Received user-attended:', { userId, name, email });
-      setLiveAttendees((prev) => {
-        if (prev.find((a) => a.userId === userId)) return prev;
-        return [...prev, { userId, name, email }];
-      });
-    };
-
     socket.on('attendance-started', ({ otp, sessionId, expiresIn }) => {
       setGeneratedOtp(otp);
       setSessionId(sessionId);
       setTimer(expiresIn || 60);
       setAttendanceStarted(true);
       setAttendanceOver(false);
-      setLiveAttendees([]);
     });
 
     socket.on('active-session-data', ({ otp, sessionId, expiresAt }) => {
       const now = Date.now();
       const remainingTime = Math.floor((expiresAt - now) / 1000);
-
       if (remainingTime > 0) {
         setGeneratedOtp(otp);
         setSessionId(sessionId);
@@ -55,8 +44,6 @@ const AttendanceStart = ({ adminId, token }) => {
         setAttendanceOver(false);
       }
     });
-
-    socket.on('user-attended', handleUserAttended);
 
     socket.on('attendance-session-failed', (err) => {
       setError(err.message || 'Attendance session failed');
@@ -68,7 +55,6 @@ const AttendanceStart = ({ adminId, token }) => {
       socket.off('attendance-started');
       socket.off('attendance-session-failed');
       socket.off('active-session-data');
-      socket.off('user-attended', handleUserAttended);
     };
   }, [token, adminId]);
 
@@ -76,22 +62,20 @@ const AttendanceStart = ({ adminId, token }) => {
     if (timer > 0) {
       const countdown = setInterval(() => {
         setTimer((prev) => {
-          if (prev === 1) {
+          if (prev === 1 && !attendanceOver) {
             setAttendanceOver(true);
-            markAbsentUsers(); // ⬅️ Call here
+            markAbsentUsers();
           }
           return prev - 1;
         });
       }, 1000);
       return () => clearInterval(countdown);
     }
-  }, [timer]);
+  }, [timer, attendanceOver]);
 
   const markAbsentUsers = async () => {
     try {
-      const res = await axiosClient.post('/attendance/markAbsent', {
-        sessionId,
-      });
+      const res = await axiosClient.post('/attendance/markAbsent', { sessionId });
       console.log('✔️ Absentees marked:', res.data);
       setAbsentMarked(true);
     } catch (err) {
@@ -210,24 +194,6 @@ const AttendanceStart = ({ adminId, token }) => {
             </motion.p>
           )}
         </motion.div>
-
-        {/* Live Attendee List */}
-        {liveAttendees.length > 0 && (
-          <motion.div
-            className="bg-slate-800 mt-4 p-4 rounded-xl shadow-xl border border-cyan-400"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <h3 className="text-xl font-bold text-cyan-300 mb-2">Live Attendees:</h3>
-            <ul className="space-y-1 max-h-60 overflow-y-auto">
-              {liveAttendees.map((att) => (
-                <li key={att.userId} className="text-white">
-                  ✅ {att.name} <span className="text-gray-400">({att.email})</span>
-                </li>
-              ))}
-            </ul>
-          </motion.div>
-        )}
       </div>
 
       <Footer />

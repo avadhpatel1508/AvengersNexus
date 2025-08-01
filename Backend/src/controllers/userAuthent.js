@@ -52,7 +52,8 @@ const VerifyOtpSignup = async (req, res) => {
   }
 };
 
-// STEP 3: Register User
+
+
 const register = async (req, res) => {
   const { firstName, emailId, passWord } = req.body;
   const normalizedEmail = emailId.trim().toLowerCase();
@@ -68,7 +69,10 @@ const register = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    const newUser = new User({ firstName, emailId: normalizedEmail, passWord });
+    // ✅ Hash the password before saving
+    const hashedPassword = await bcrypt.hash(passWord, 10);
+
+    const newUser = new User({ firstName, emailId: normalizedEmail, passWord: hashedPassword });
     await newUser.save();
     await redisClient.del(`verified:${normalizedEmail}`);
 
@@ -77,7 +81,8 @@ const register = async (req, res) => {
     console.error("Registration Error:", err.message);
     res.status(500).json({ message: "Registration failed" });
   }
-}
+};
+
 // -------------------- Login --------------------
 const login = async (req, res) => {
   try {

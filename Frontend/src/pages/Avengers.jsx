@@ -5,36 +5,61 @@ import AdminNavbar from '../components/AdminNavbar';
 import UserNavbar from '../components/UserNavbar';
 import { useSelector } from 'react-redux';
 import Footer from '../components/Footer';
+import Loader from './Loader';
 
 function AvengersPage() {
+  const user = useSelector((state) => state.auth?.user);
   const [avengers, setAvengers] = useState([]);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState('');
-  const user = useSelector((state) => state.auth?.user);
 
   useEffect(() => {
     const fetchAvengers = async () => {
-      try {
-        const response = await axiosClient.get('/user/users');
-        const data = response.data.users || [];
-        setAvengers(data);
-        setIsLoaded(true);
-        if (data.length === 0) setError('No avengers found.');
-      } catch (err) {
-        setError('Failed to load avengers.');
-        setIsLoaded(true);
-        console.error(err);
+    try {
+      const response = await axiosClient.get('/user/users');
+      const avengerData = Array.isArray(response.data.users) ? response.data.users : [];
+
+      // Fetch mission count per user
+      const avengersWithCount = await Promise.all(
+        avengerData.map(async (avenger) => {
+          try {
+            const statsRes = await axiosClient.get(`/mission/missionStats/${avenger._id}`);
+            const { assignedMissions, completedMissions, totalMissions } = statsRes.data;
+          return {
+            ...avenger,
+            assignedMissions: assignedMissions || 0,
+            completedMissions: completedMissions || 0,
+            totalMissions: totalMissions || 0,
+          };
+
+            return { ...avenger, missionCount };
+          } catch (err) {
+            return { ...avenger, missionCount: 0 };
+          }
+        })
+      );
+
+      setAvengers(avengersWithCount);
+      if (avengersWithCount.length === 0) {
+        setError('No avengers found.');
       }
-    };
+    } catch (err) {
+      console.error('Error fetching avengers:', err.response?.data || err.message);
+      setError('Failed to load avengers.');
+      setAvengers([]);
+    } finally {
+      setIsLoaded(true);
+    }
+  };
 
-    fetchAvengers();
+  fetchAvengers();
 
-    const handleMouseMove = (e) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+  const handleMouseMove = (e) => {
+  setMousePosition({ x: e.clientX, y: e.clientY });
+  };
+  window.addEventListener('mousemove', handleMouseMove);
+  return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
   const containerVariants = {
@@ -62,6 +87,23 @@ function AvengersPage() {
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
+      {user?.role === 'admin' ? <AdminNavbar /> : <UserNavbar />}
+
+      {/* Loader */}
+      <AnimatePresence>
+        {!isLoaded && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Loader />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Background Effects */}
       <div className="fixed inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-black to-blue-950"></div>
@@ -106,15 +148,10 @@ function AvengersPage() {
         </div>
       </div>
 
-      {user?.role === 'admin' ? <AdminNavbar /> : <UserNavbar />}
-
       {/* Main Content */}
-      <div className="relative z-10 min-h-screen flex items-center py-4 px-4 sm:px-6"> {/* Reduced py-10 to py-4 */}
+      <div className="relative z-10 min-h-screen flex items-center py-2 px-2 sm:px-4">
         <div className="container mx-auto">
-        
-
-          {/* Error Message */}
-          {error && (
+          {error ? (
             <motion.p
               className="text-center text-lg text-red-400 mb-10"
               variants={itemVariants}
@@ -123,57 +160,70 @@ function AvengersPage() {
             >
               {error}
             </motion.p>
-          )}
-
-          {/* Avengers Grid */}
-          <motion.div
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 max-w-7xl mx-auto mb-10"
-            variants={containerVariants}
-            initial="hidden"
-            animate={isLoaded ? 'visible' : 'hidden'}
-          >
-            {avengers.length === 0 && isLoaded ? (
-              <motion.p
-                className="col-span-full text-center text-xl text-gray-400"
-                variants={itemVariants}
-              >
-                No Avengers Found.
-              </motion.p>
-            ) : (
-              avengers.map((avenger) => (
-                <motion.div
-                  key={avenger._id}
-                  className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/20 shadow-2xl perspective-1000"
+          ) : (
+            <motion.div
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-7xl mx-auto mb-10"
+              variants={containerVariants}
+              initial="hidden"
+              animate={isLoaded ? 'visible' : 'hidden'}
+            >
+              {avengers.length === 0 && isLoaded ? (
+                <motion.p
+                  className="col-span-full text-center text-xl text-gray-400"
                   variants={itemVariants}
-                  whileHover={{ rotateY: 5, rotateX: 2, scale: 1.05 }}
-                  style={{ transformStyle: 'preserve-3d' }}
                 >
-                 
-                  <h3 className="text-3xl font-bold mb-4 bg-gradient-to-r from-red-500 via-white to-blue-500 bg-clip-text text-transparent">
-                    {avenger.firstName}
-                  </h3>
-                  <p className="text-gray-300 mb-6 text-md">{avenger.emailId}</p>
+                  No Avengers Found.
+                </motion.p>
+              ) : (
+                avengers.map((avenger) => (
+                  <motion.div
+                    key={avenger._id}
+                    className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/20 shadow-2xl perspective-1000"
+                    variants={itemVariants}
+                    whileHover={{ rotateY: 5, rotateX: 2, scale: 1.05 }}
+                    style={{ transformStyle: 'preserve-3d' }}
+                  >
+                    <h3 className="text-3xl font-bold mb-4 bg-gradient-to-r from-red-500 via-white to-blue-500 bg-clip-text text-transparent">
+                      {avenger.firstName}
+                    </h3>
+                    <p className="text-gray-300 mb-6 text-md">{avenger.emailId}</p>
 
-                  <div className="space-y-2 text-md">
-                    <p>
-                      <span className="text-white font-semibold">🆔 ID:</span>{' '}
-                      <span className="text-gray-400">{avenger._id}</span>
-                    </p>
-                    <p>
-                      <span className="text-white font-semibold">🛡️ Role:</span>{' '}
-                      <span
-                        className={`font-bold ${
-                          avenger.role === 'admin' ? 'text-red-400' : 'text-blue-400'
-                        }`}
-                      >
-                        {avenger.role}
-                      </span>
-                    </p>
-                  </div>
-                </motion.div>
-              ))
-            )}
-          </motion.div>
+                    <div className="space-y-2 text-md">
+                      <p>
+                        <span className="text-white font-semibold">🆔 ID:</span>{' '}
+                        <span className="text-gray-400">{avenger._id}</span>
+                      </p>
+                      <p>
+                        <span className="text-white font-semibold">🛡️ Role:</span>{' '}
+                        <span
+                          className={`font-bold ${
+                            avenger.role === 'admin' ? 'text-red-400' : 'text-blue-400'
+                          }`}
+                        >
+                          {avenger.role}
+                        </span>
+                      </p>
+                      <p>
+  <span className="text-white font-semibold">📋 Assigned Missions:</span>{' '}
+  <span className="text-gray-400">{avenger.assignedMissions}</span>
+</p>
+<p>
+  <span className="text-white font-semibold">✅ Completed Missions:</span>{' '}
+  <span className="text-green-400">{avenger.completedMissions}</span>
+</p>
+<p>
+  <span className="text-white font-semibold">📊 Total Missions:</span>{' '}
+  <span className="text-yellow-400">{avenger.totalMissions}</span>
+</p>
+                    </div>
+
+                    {/* Scan Lines */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/5 to-transparent animate-pulse"></div>
+                  </motion.div>
+                ))
+              )}
+            </motion.div>
+          )}
         </div>
       </div>
 

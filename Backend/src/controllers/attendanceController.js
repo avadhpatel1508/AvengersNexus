@@ -6,6 +6,7 @@ const generateOtp = require('../utils/generateOtp');
 const { io } = require('../socket/attendanceSocket');
 
 // START ATTENDANCE (ADMIN)
+// START ATTENDANCE (ADMIN)
 const startAttendance = async (io, adminId) => {  
   try {
     const otp = generateOtp();
@@ -15,6 +16,7 @@ const startAttendance = async (io, adminId) => {
     const activeSession = await redisClient.get('activeAttendance');
     if (activeSession) throw new Error('An attendance session is already running');
 
+    // Store OTP and session in Redis
     await redisClient.setEx(`otp:${sessionId}`, expiry, otp);
     await redisClient.setEx('activeAttendance', expiry, sessionId);
 
@@ -24,7 +26,19 @@ const startAttendance = async (io, adminId) => {
       expiresIn: expiry
     });
 
-    setTimeout(() => markAbsentForAll(sessionId), expiry * 1000);
+    // Schedule marking absentees and cleanup
+    setTimeout(async () => {
+      try {
+        await markAbsentForAll(sessionId);
+        // Clean up Redis keys after marking absentees
+        await redisClient.del('activeAttendance');
+        await redisClient.del(`otp:${sessionId}`);
+        io.emit('attendance-ended', { sessionId });
+        console.log(`✅ Attendance session ${sessionId} ended and cleaned up`);
+      } catch (error) {
+        console.error('❌ Error in attendance cleanup:', error);
+      }
+    }, expiry * 1000);
 
     console.log(`✅ Attendance started by ${adminId} | OTP: ${otp}`);
     return { sessionId, otp, expiresIn: expiry };
@@ -96,25 +110,44 @@ const submitOtp = async (userId, enteredOtp, sessionId, io) => {
 // MARK ABSENT FOR ALL (after timeout)
 const markAbsentForAll = async (sessionId) => {
   try {
-    const allUsers = await User.find({ role: 'user' });
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    for (const user of allUsers) {
-      const alreadyMarked = await Attendance.findOne({ user: user._id, date: today });
+    // Find users who haven't submitted OTP for this session
+    const presentUsers = await Attendance.find({ 
+      otpSessionId: sessionId, 
+      date: today,
+      status: 'Present'
+    }).distinct('user'); // Get IDs of users marked present
+
+    // Find all users with role 'user' who aren't marked present
+    const usersToMarkAbsent = await User.find({ 
+      role: 'user',
+      _id: { $nin: presentUsers } // Exclude users already marked present
+    });
+
+    // Mark absent for users without an attendance record for today
+    const attendancePromises = usersToMarkAbsent.map(async (user) => {
+      const alreadyMarked = await Attendance.findOne({ 
+        user: user._id, 
+        date: today 
+      });
       if (!alreadyMarked) {
-        await Attendance.create({
+        return Attendance.create({
           user: user._id,
           date: today,
           status: 'Absent',
           otpSessionId: sessionId
         });
       }
-    }
+    });
+
+    await Promise.all(attendancePromises.filter(Boolean)); // Execute only valid promises
 
     console.log(`✅ Marked absentees for session ${sessionId}`);
   } catch (error) {
     console.error('❌ Error in markAbsentForAll:', error);
+    throw error; // Rethrow to allow caller to handle
   }
 };
 
@@ -134,36 +167,10 @@ const checkactive = async (req, res) => {
   }
 };
 
-const getLiveAttendees = async (req, res) => {
-  try {
-    const now = Date.now();
 
-    // Get the latest active session
-    const activeSessionEntry = Object.entries(otpSessions).find(
-      ([, session]) => session.expiresAt > now
-    );
-
-    if (!activeSessionEntry) {
-      return res.status(200).json({ success: true, attendees: [] });
-    }
-
-    const [sessionId] = activeSessionEntry;
-
-    // Fetch attendees from DB
-    const attendees = await Attendance.find({ 
-      otpSessionId: sessionId 
-    }).populate('user', 'firstName emailId');
-
-    res.status(200).json({ success: true, sessionId, attendees });
-  } catch (err) {
-    console.error('🔴 Error getting live attendees:', err.message);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-};
 module.exports = {
   startAttendance,
   submitOtp,
   markAbsentForAll,
-  checkactive,
-  getLiveAttendees
+  checkactive
 };

@@ -13,6 +13,7 @@ function UserNavbar() {
     };
 
     const menuItems = [
+        
         { to: '/posts', label: 'Posts' },
         { to: '/missions', label: 'Missions' },
         { to: '/attendance', label: 'Attendance' },
@@ -22,6 +23,7 @@ function UserNavbar() {
     ];
 
     const userLinks = [
+        { to: '/profile', label: 'Profile' },
         { to: '/your-reward', label: 'Your Reward' },
         { to: '/attendance-summary', label: 'Attendance' },
         { to: '/your-missions', label: 'Your Missions' }

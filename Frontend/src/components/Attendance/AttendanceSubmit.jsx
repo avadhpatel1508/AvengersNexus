@@ -34,8 +34,22 @@ const AttendanceSubmit = () => {
     return { date, time };
   };
 
+  const fetchAttendance = async () => {
+    try {
+      const { data } = await axiosClient.get(`/attendance/${userId}`);
+      if (data?.success) {
+        setAttendanceHistory(data.attendance || []);
+      } else {
+        setError('Failed to fetch attendance history.');
+      }
+    } catch (err) {
+      console.error('❌ Error fetching attendance:', err);
+      setError('Something went wrong fetching attendance.');
+    }
+  };
+
   useEffect(() => {
-    initializeSocket(); // No token passed
+    initializeSocket();
     const socket = getSocket();
     if (!socket) return;
 
@@ -52,7 +66,7 @@ const AttendanceSubmit = () => {
     socket.on('attendance-success', (data) => {
       setMessage(data.message || 'Attendance marked successfully!');
       setSubmitted(true);
-      fetchAttendance(); // Refresh after marking
+      fetchAttendance();
     });
 
     socket.on('attendance-failed', (err) => {
@@ -97,17 +111,6 @@ const AttendanceSubmit = () => {
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
-
-  const fetchAttendance = async () => {
-    try {
-      const { data } = await axiosClient.get(`/attendance/${userId}`);
-      if (data?.success) {
-        setAttendanceHistory(data.attendance || []);
-      }
-    } catch (err) {
-      console.error('❌ Error fetching attendance:', err.response?.data || err.message);
-    }
-  };
 
   useEffect(() => {
     if (userId) {
@@ -165,7 +168,7 @@ const AttendanceSubmit = () => {
       </div>
 
       <div className="relative z-10 p-4 sm:p-8 flex flex-col items-center justify-center min-h-screen gap-6">
-        {/* OTP Box */}
+        {/* OTP Form */}
         <motion.div
           className="w-full max-w-md bg-black/40 backdrop-blur-md p-6 rounded-xl border border-cyan-400/20"
           variants={containerVariants}
@@ -219,7 +222,7 @@ const AttendanceSubmit = () => {
           )}
         </motion.div>
 
-        {/* Attendance History */}
+        {/* Attendance Table */}
         <motion.div
           className="w-full max-w-4xl bg-black/40 backdrop-blur-md p-6 rounded-xl border border-cyan-400/20"
           variants={containerVariants}
@@ -243,14 +246,14 @@ const AttendanceSubmit = () => {
                 {attendanceHistory.length === 0 ? (
                   <tr>
                     <td colSpan="4" className="text-center text-red-400 py-4">
-                      No attendance records found
+                      No attendance records found.
                     </td>
                   </tr>
                 ) : (
-                  attendanceHistory.map((record, index) => {
+                  attendanceHistory.map((record) => {
                     const { date, time } = formatDateTime(record.date);
                     return (
-                      <tr key={record._id || index}>
+                      <tr key={record._id}>
                         <td className="px-4 py-2">{date}</td>
                         <td className="px-4 py-2">{time}</td>
                         <td className="px-4 py-2">{record.otpSessionId}</td>

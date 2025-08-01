@@ -10,7 +10,8 @@ const {
   getAllMission,
   getCompletedMissionsByUser,
   completeMissionById,
-  getRewardsByUser
+  getRewardsByUser,
+  getUserMissionStats
 } = require('../controllers/userMission');
 
 module.exports = (io) => {
@@ -28,8 +29,9 @@ module.exports = (io) => {
   missionRouter.get('/getAllMission', userMiddleware, getAllMission);
   missionRouter.get('/missionCompletedByUser', userMiddleware, getCompletedMissionsByUser);
 
-  // Dynamic routes should be last
-  missionRouter.get('/getRewardsByUser/:userId', getRewardsByUser);
+  // Dynamic routes
+  missionRouter.get('/getRewardsByUser/:userId', userMiddleware, getRewardsByUser);
+  missionRouter.get('/missionStats/:userId', userMiddleware, getUserMissionStats);
   missionRouter.get('/:id', userMiddleware, getMissionById);
 
   return missionRouter;

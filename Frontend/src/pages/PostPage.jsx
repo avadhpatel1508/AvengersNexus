@@ -13,14 +13,35 @@ function PostsPage() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState('');
+  const [sortBy, setSortBy] = useState('all');
 
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const response = await axiosClient.get('/post/');
-        const postData = Array.isArray(response.data) ? response.data : [];
-        setPosts(postData);
-        if (postData.length === 0) {
+        const postResponse = await axiosClient.get('/post/');
+        const postData = Array.isArray(postResponse.data) ? postResponse.data : [];
+
+        const postsWithAvengers = await Promise.all(
+          postData.map(async (post) => {
+            if (Array.isArray(post.avengersAssigned) && post.avengersAssigned.length > 0) {
+              const avengerPromises = post.avengersAssigned.map(async (avengerId) => {
+                try {
+                  const avengerResponse = await axiosClient.get(`/user/getUser/${avengerId}`);
+                  const avenger = avengerResponse.data;
+                  return avenger && avenger._id ? avenger : null;
+                } catch {
+                  return null;
+                }
+              });
+              const avengers = (await Promise.all(avengerPromises)).filter(Boolean);
+              return { ...post, avengersAssigned: avengers };
+            }
+            return { ...post, avengersAssigned: [] };
+          })
+        );
+
+        setPosts(postsWithAvengers);
+        if (postsWithAvengers.length === 0) {
           setError('No posts found.');
         }
       } catch (error) {
@@ -40,6 +61,15 @@ function PostsPage() {
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
+
+  // Sorting function
+  const sortedPosts = () => {
+    if (sortBy === 'all') return posts;
+    return posts.filter((post) =>
+      post.importance &&
+      post.importance.trim().toLowerCase() === sortBy
+    );
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -128,13 +158,47 @@ function PostsPage() {
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 min-h-screen flex items-center py-10 px-4 sm:px-6">
-        <div className="container mx-auto">
-          
+      <div className="relative z-10 min-h-screen pt-10 px-4 sm:px-6"> {/* Added pt-24 for fixed header spacing */}
+        {/* Fixed Sorting Controls */}
+        <div className=" top-24 left-0 right-0 z-20 py-4">
+          <div className="container mx-auto flex justify-center space-x-4 px-4">
+            <button
+              onClick={() => setSortBy('all')}
+              className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors duration-300 ${
+                sortBy === 'all'
+                  ? 'bg-gradient-to-r from-red-500 to-blue-500 text-white'
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              All Posts
+            </button>
+            <button
+              onClick={() => setSortBy('important')}
+              className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors duration-300 ${
+                sortBy === 'important'
+                  ? 'bg-gradient-to-r from-red-500 to-blue-500 text-white'
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              Important
+            </button>
+            <button
+              onClick={() => setSortBy('not-important')}
+              className={`px-4 py-2 rounded-full font-semibold text-sm transition-colors duration-300 ${
+                sortBy === 'not-important'
+                  ? 'bg-gradient-to-r from-red-500 to-blue-500 text-white'
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              Not Important
+            </button>
+          </div>
+        </div>
 
-          {error ? (
+        <div className="container mx-auto mt-4"> {/* Small margin to keep posts close to buttons */}
+          {error && sortedPosts().length === 0 ? (
             <motion.p
-              className="text-center text-lg text-red-400 mb-10"
+              className="text-center text-lg text-red-400"
               variants={itemVariants}
               initial="hidden"
               animate={isLoaded ? 'visible' : 'hidden'}
@@ -143,12 +207,12 @@ function PostsPage() {
             </motion.p>
           ) : (
             <motion.div
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 max-w-7xl mx-auto mb-10"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto"
               variants={containerVariants}
               initial="hidden"
               animate={isLoaded ? 'visible' : 'hidden'}
             >
-              {posts.map((post) => (
+              {sortedPosts().map((post) => (
                 <motion.div
                   key={post._id}
                   className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/20 shadow-2xl perspective-1000"
@@ -177,6 +241,12 @@ function PostsPage() {
                     <p>
                       <span className="text-white font-semibold">🕒 Posted on:</span>{' '}
                       <span className="text-gray-400">{new Date(post.createdAt).toLocaleDateString()}</span>
+                    </p>
+                    <p>
+                      <span className="text-white font-semibold">🦸 Assigned Avengers:</span>{' '}
+                      <span className="text-gray-400">
+                        {post.avengersAssigned.map((a) => a.firstName).join(', ') || 'None'}
+                      </span>
                     </p>
                   </div>
 

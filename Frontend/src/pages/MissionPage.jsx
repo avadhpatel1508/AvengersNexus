@@ -10,9 +10,15 @@ import Loader from './Loader';
 function MissionsPage() {
   const user = useSelector((state) => state.auth?.user);
   const [missions, setMissions] = useState([]);
+  const [filteredMissions, setFilteredMissions] = useState([]);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState('');
+  const [filters, setFilters] = useState({
+    status: 'All',
+    difficulty: 'All',
+    location: 'All',
+  });
 
   useEffect(() => {
     const fetchMissions = async () => {
@@ -40,6 +46,7 @@ function MissionsPage() {
         );
 
         setMissions(missionsWithAvengers);
+        setFilteredMissions(missionsWithAvengers);
         if (missionsWithAvengers.length === 0) {
           setError('No missions found.');
         }
@@ -47,6 +54,7 @@ function MissionsPage() {
         console.error('Error fetching missions:', error.response?.data || error.message);
         setError('Failed to load missions.');
         setMissions([]);
+        setFilteredMissions([]);
       } finally {
         setIsLoaded(true);
       }
@@ -60,6 +68,42 @@ function MissionsPage() {
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
+
+  useEffect(() => {
+    let updatedMissions = [...missions];
+
+    if (filters.status !== 'All') {
+      updatedMissions = updatedMissions.filter((mission) =>
+        filters.status === 'Completed' ? mission.isCompleted : !mission.isCompleted
+      );
+    }
+
+    if (filters.difficulty !== 'All') {
+      updatedMissions = updatedMissions.filter(
+        (mission) => mission.difficulty.toLowerCase() === filters.difficulty.toLowerCase()
+      );
+    }
+
+    if (filters.location !== 'All') {
+      updatedMissions = updatedMissions.filter(
+        (mission) => mission.Location.toLowerCase() === filters.location.toLowerCase()
+      );
+    }
+
+    setFilteredMissions(updatedMissions);
+    if (updatedMissions.length === 0 && missions.length > 0) {
+      setError('No missions match the selected filters.');
+    } else if (missions.length === 0) {
+      setError('No missions found.');
+    } else {
+      setError('');
+    }
+  }, [filters, missions]);
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters((prev) => ({ ...prev, [name]: value }));
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -84,9 +128,66 @@ function MissionsPage() {
     },
   };
 
+  const uniqueDifficulties = ['All', ...new Set(missions.map((m) => m.difficulty))];
+  const uniqueLocations = ['All', ...new Set(missions.map((m) => m.Location))];
+
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       {user?.role === 'admin' ? <AdminNavbar /> : <UserNavbar />}
+
+      {/* Filter Options */}
+      <div className="relative z-10 container mx-auto px-4 sm:px-6 py-2">
+        <motion.div
+          className="flex flex-col sm:flex-row gap-4 justify-center items-center bg-gradient-to-r from-slate-800/60 to-slate-900/60 p-4 rounded-xl border border-white/20"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <div className="flex flex-col w-full sm:w-auto">
+            <label className="text-sm text-gray-300 mb-1">Status</label>
+            <select
+              name="status"
+              value={filters.status}
+              onChange={handleFilterChange}
+              className="bg-slate-900/80 text-white border border-white/20 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="All">All</option>
+              <option value="Completed">Completed</option>
+              <option value="In Progress">In Progress</option>
+            </select>
+          </div>
+          <div className="flex flex-col w-full sm:w-auto">
+            <label className="text-sm text-gray-300 mb-1">Difficulty</label>
+            <select
+              name="difficulty"
+              value={filters.difficulty}
+              onChange={handleFilterChange}
+              className="bg-slate-900/80 text-white border border-white/20 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {uniqueDifficulties.map((difficulty) => (
+                <option key={difficulty} value={difficulty}>
+                  {difficulty}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col w-full sm:w-auto">
+            <label className="text-sm text-gray-300 mb-1">Location</label>
+            <select
+              name="location"
+              value={filters.location}
+              onChange={handleFilterChange}
+              className="bg-slate-900/80 text-white border border-white/20 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {uniqueLocations.map((location) => (
+                <option key={location} value={location}>
+                  {location}
+                </option>
+              ))}
+            </select>
+          </div>
+        </motion.div>
+      </div>
 
       {/* Loader */}
       <AnimatePresence>
@@ -106,7 +207,6 @@ function MissionsPage() {
       {/* Background Effects */}
       <div className="fixed inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-black to-blue-950"></div>
-
         <div className="absolute inset-0 opacity-20">
           <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
             <defs>
@@ -123,7 +223,6 @@ function MissionsPage() {
             <rect width="100" height="100" fill="url(#heroGrad)" />
           </svg>
         </div>
-
         <motion.div
           className="absolute w-96 h-96 rounded-full pointer-events-none"
           style={{
@@ -134,8 +233,6 @@ function MissionsPage() {
           }}
           transition={{ type: 'spring', stiffness: 20, damping: 30 }}
         />
-
-        {/* Rotating Star */}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-5">
           <div className="w-[60vw] max-w-[350px] h-[60vw] max-h-[350px] border-8 border-white rounded-full flex items-center justify-center animate-spin-very-slow">
             <div className="w-64 h-64 border-8 border-red-500 rounded-full flex items-center justify-center">
@@ -148,10 +245,8 @@ function MissionsPage() {
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 min-h-screen flex items-center py-10 px-4 sm:px-6">
+      <div className="relative z-10 min-h-screen flex items-start pt-6 pb-10 px-4 sm:px-6">
         <div className="container mx-auto">
-          
-
           {error ? (
             <motion.p
               className="text-center text-lg text-red-400 mb-10"
@@ -163,12 +258,16 @@ function MissionsPage() {
             </motion.p>
           ) : (
             <motion.div
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 max-w-7xl mx-auto mb-10"
+              className={`grid gap-10 mx-auto mb-10 ${
+                filteredMissions.length === 1
+                  ? 'grid-cols-1 max-w-xl place-items-center'
+                  : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-7xl'
+              }`}
               variants={containerVariants}
               initial="hidden"
               animate={isLoaded ? 'visible' : 'hidden'}
             >
-              {missions.map((mission) => (
+              {filteredMissions.map((mission) => (
                 <motion.div
                   key={mission._id}
                   className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/20 shadow-2xl perspective-1000"
@@ -180,7 +279,6 @@ function MissionsPage() {
                     {mission.title}
                   </h3>
                   <p className="text-gray-300 mb-6">{mission.description}</p>
-
                   <div className="space-y-2 text-md">
                     <p>
                       <span className="text-white font-semibold">📍 Location:</span>{' '}
@@ -205,8 +303,6 @@ function MissionsPage() {
                       )}
                     </p>
                   </div>
-
-                  {/* Scan Lines */}
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/5 to-transparent animate-pulse"></div>
                 </motion.div>
               ))}

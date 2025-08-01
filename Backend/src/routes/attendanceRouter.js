@@ -40,15 +40,19 @@ attendanceRouter.get('/date/:date', userMiddleware, async (req, res) => {
 attendanceRouter.get('/:userId', userMiddleware, async (req, res) => {
   try {
     const { userId } = req.params;
-    if (req.result._id.toString() !== userId && req.result.role !== 'admin') {
+
+    // ✅ Ensure you're using req.user
+    if (req.user._id.toString() !== userId && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
+
     const attendance = await Attendance.find({ user: userId }).sort({ date: -1 });
     res.status(200).json({ success: true, userId, attendance });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Server error', error: err.message });
   }
 });
+
 
 
 attendanceRouter.post('/start', adminMiddleware, async (req, res) => {
@@ -89,41 +93,7 @@ attendanceRouter.post('/mark', userMiddleware, async (req, res) => {
 attendanceRouter.get('/check-active', async (req, res) => {
   return attendanceController.checkactive(req, res);
 });
-attendanceRouter.get('/live-attendees', userMiddleware, async (req, res) => {
-  try {
-    const now = new Date();
 
-    const startOfToday = new Date(Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-      0, 0, 0, 0
-    ));
-
-    const endOfToday = new Date(Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-      23, 59, 59, 999
-    ));
-
-    const liveAttendance = await Attendance.find({
-      date: { $gte: startOfToday, $lte: endOfToday },
-    }).populate('user', 'firstName emailId');
-
-    res.status(200).json({
-      success: true,
-      date: startOfToday.toISOString().split('T')[0],
-      attendees: liveAttendance,
-    });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: 'Server error',
-      error: err.message,
-    });
-  }
-});
 attendanceRouter.get('/monthly-summary', async (req, res) => {
   const { month, year } = req.query;
 
