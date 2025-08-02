@@ -100,11 +100,13 @@ const login = async (req, res) => {
     const token = generateToken(user);
 
     res.cookie("token", token, {
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      httpOnly: true,
-      sameSite: "lax",
-      secure: false,
-    });
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production", // true in prod
+  sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+  path: "/", // must match during clear
+});
+
 
     // ✅ Send token in response too
     res.status(200).json({
@@ -141,11 +143,12 @@ const logout = async (req, res) => {
 
     // Clear cookie properly
     res.clearCookie("token", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // set true in prod
-      sameSite: "Lax", // or "None" if cross-site
-      path: "/",       // must match original path
-    });
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+  path: "/", // must match
+});
+
 
     res.status(200).json({ message: "Logged out successfully" });
   } catch (err) {
