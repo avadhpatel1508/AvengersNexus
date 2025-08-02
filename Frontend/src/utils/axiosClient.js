@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const axiosClient = axios.create({
-  baseURL: "http://localhost:4000",
+  baseURL: import.meta.env.VITE_BACKEND_URL || "http://localhost:4000",
   withCredentials: true, // This sends cookies (session ID)
   headers: {
     "Content-Type": "application/json",

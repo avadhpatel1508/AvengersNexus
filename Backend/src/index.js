@@ -11,11 +11,24 @@ const http = require('http');
 const { Server } = require('socket.io');
 const server = http.createServer(app);
 
-const io = new Server(server, {
-  cors: {
-    origin: 'http://localhost:5173',
-    credentials: true,
+// ✅ Read allowed origins from .env
+const allowedOrigins = process.env.FRONT_KEY?.split(',') || ['http://localhost:5173'];
+
+// ✅ Dynamic CORS function
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS: ' + origin));
+    }
   },
+  credentials: true,
+};
+
+// 🔌 Socket.IO server setup
+const io = new Server(server, {
+  cors: corsOptions,
 });
 
 // 🔁 Load socket handlers
@@ -23,11 +36,11 @@ require('./socket/attendanceSocket')(io);
 require('./socket/chatSocket')(io);
 
 // 🌐 Middlewares
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 
-// 🔌 Attach io to app for access in routers (optional)
+// 🔌 Attach io to app (optional use in routers)
 app.set('io', io);
 
 // 🌐 Routes
@@ -36,9 +49,7 @@ const postRouter = require("./routes/postAuth");
 const attendanceRouter = require('./routes/attendanceRouter');
 const feedbackRouter = require('./routes/feedbackRoutes');
 const chatRouter = require('./routes/chatRoutes');
-
-// ✅ Import missionRouter only after io is ready
-const missionRouter = require("./routes/missionAuth")(io); // <-- io passed here
+const missionRouter = require("./routes/missionAuth")(io); // router needs io
 
 app.use('/user', authRouter);
 app.use('/mission', missionRouter);

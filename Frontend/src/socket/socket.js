@@ -5,7 +5,7 @@ let socket = null;
 
 export const initializeSocket = (token) => {
   if (!socket) {
-    socket = io('http://localhost:4000', {
+    socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000', {
       withCredentials: true,
       auth: {
         token,
