@@ -12,25 +12,32 @@ const http = require('http');
 const { Server } = require('socket.io');
 const server = http.createServer(app);
 
-// ✅ Setup CORS with a single allowed origin from .env
+// ✅ Setup CORS with support for Vercel + localhost
 const allowedOrigins = process.env.FRONT_KEY?.split(',') || ['http://localhost:5173'];
+
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS: ' + origin));
+    try {
+      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes(new URL(origin).origin)) {
+        callback(null, true);
+      } else {
+        console.error('❌ CORS blocked origin:', origin);
+        callback(new Error('Not allowed by CORS: ' + origin));
+      }
+    } catch (err) {
+      console.error('❌ Invalid Origin:', origin);
+      callback(new Error('CORS origin error'));
     }
   },
   credentials: true,
 };
 
-// ✅ Setup Socket.IO
+// ✅ Setup Socket.IO with same CORS options
 const io = new Server(server, {
   cors: corsOptions,
 });
 
-// ✅ Attach custom socket logic
+// ✅ Attach socket handlers
 require('./socket/attendanceSocket')(io);
 require('./socket/chatSocket')(io);
 
@@ -41,10 +48,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// ✅ Attach io to app for router access
+// ✅ Attach io to app if needed in routes
 app.set('io', io);
 
-// ✅ Health check route (fixes "Cannot GET /")
+// ✅ Health check route
 app.get('/', (req, res) => {
   res.send('✅ Avengers Nexus backend is running.');
 });
@@ -55,7 +62,7 @@ const postRouter = require('./routes/postAuth');
 const attendanceRouter = require('./routes/attendanceRouter');
 const feedbackRouter = require('./routes/feedbackRoutes');
 const chatRouter = require('./routes/chatRoutes');
-const missionRouter = require('./routes/missionAuth')(io); // pass io if needed in router
+const missionRouter = require('./routes/missionAuth')(io); // if it uses socket
 
 app.use('/user', authRouter);
 app.use('/mission', missionRouter);
@@ -64,25 +71,25 @@ app.use('/attendance', attendanceRouter);
 app.use('/feedback', feedbackRouter);
 app.use('/chat', chatRouter);
 
-// ✅ Connect DB, Redis, then start server
+// ✅ Start Server after DB & Redis
 const InitializeConnection = async () => {
   try {
     await Promise.all([main(), redisClient.connect()]);
-    console.log('✅ MongoDB and Redis connected');
+    console.log('MongoDB and Redis connected');
 
     const PORT = process.env.PORT || 4000;
     server.listen(PORT, () => {
-      console.log(`🚀 Server listening on port: ${PORT}`);
+      console.log(`Server listening on port: ${PORT}`);
     });
   } catch (err) {
-    console.error('❌ Initialization error:', err);
+    console.error('Initialization error:', err);
   }
 };
 
-// ✅ Graceful shutdown for Redis
+// ✅ Graceful Redis shutdown
 process.on('SIGINT', async () => {
   await redisClient.quit();
-  console.log('🛑 Redis disconnected');
+  console.log('Redis disconnected');
   process.exit(0);
 });
 

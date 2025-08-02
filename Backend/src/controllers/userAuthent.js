@@ -125,24 +125,36 @@ const login = async (req, res) => {
 
 
 // -------------------- Logout --------------------
+
 const logout = async (req, res) => {
   try {
     const { token } = req.cookies;
     if (!token) throw new Error("Token missing in cookies");
 
+    // Decode to get expiry
     const payload = jwt.decode(token);
-    if (!payload || !payload.exp) throw new Error("Invalid token");
+    if (!payload?.exp) throw new Error("Invalid token");
 
+    // Block token in Redis
     await redisClient.set(`token:${token}`, "Blocked");
     await redisClient.expireAt(`token:${token}`, payload.exp);
 
-    res.cookie("token", null, { expires: new Date(0), httpOnly: true });
-    res.send("Logout successfully");
+    // Clear cookie properly
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // set true in prod
+      sameSite: "Lax", // or "None" if cross-site
+      path: "/",       // must match original path
+    });
+
+    res.status(200).json({ message: "Logged out successfully" });
   } catch (err) {
     console.error("Logout Error:", err.message);
-    res.status(401).send("Error: " + err.message);
+    res.status(400).json({ message: "Logout failed", error: err.message });
   }
 };
+
+
 
 // -------------------- Admin Register --------------------
 const adminRegister = async (req, res) => {
