@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-import axiosClient from '../utils/axiosClient'; // Replaced axios with axiosClient
+import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaCalendarAlt } from 'react-icons/fa';
 import AdminNavbar from '../components/AdminNavbar';
@@ -69,8 +69,8 @@ const Attendance = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await axiosClient.get(
-        `/attendance/date/${formattedDate}`,
+      const response = await axios.get(
+        `http://localhost:4000/attendance/date/${formattedDate}`,
         { withCredentials: true }
       );
       const data = Array.isArray(response.data.attendance) ? response.data.attendance : [];
@@ -86,8 +86,8 @@ const Attendance = () => {
   const fetchDailyCounts = async () => {
     setGraphLoading(true);
     try {
-      const response = await axiosClient.get(
-        `/attendance/daily-counts?month=${month + 1}&year=${year}`,
+      const response = await axios.get(
+        `http://localhost:4000/attendance/daily-counts?month=${month + 1}&year=${year}`,
         { withCredentials: true }
       );
       console.log('Daily Counts API Response:', response.data); // Debug log
@@ -106,8 +106,8 @@ const Attendance = () => {
     const fetchMonthlyAttendance = async () => {
       setGraphLoading(true);
       try {
-        const res = await axiosClient.get(
-          `/attendance/monthly-summary?month=${month + 1}&year=${year}`,
+        const res = await axios.get(
+          `http://localhost:4000/attendance/monthly-summary?month=${month + 1}&year=${year}`,
           { withCredentials: true }
         );
         console.log('Monthly Data API Response:', res.data); // Debug log
