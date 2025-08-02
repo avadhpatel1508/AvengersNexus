@@ -7,12 +7,12 @@ const redisClient = require('./config/redish');
 const cors = require('cors');
 const helmet = require('helmet');
 const main = require('./config/db');
-
 const http = require('http');
 const { Server } = require('socket.io');
+
 const server = http.createServer(app);
 
-// ✅ Setup CORS with support for Vercel + localhost
+// ✅ Setup CORS for Vercel frontend and localhost
 const allowedOrigins = process.env.FRONT_KEY?.split(',') || ['http://localhost:5173'];
 
 const corsOptions = {
@@ -32,7 +32,7 @@ const corsOptions = {
   credentials: true,
 };
 
-// ✅ Setup Socket.IO with same CORS options
+// ✅ Setup Socket.IO with CORS
 const io = new Server(server, {
   cors: corsOptions,
 });
@@ -41,14 +41,14 @@ const io = new Server(server, {
 require('./socket/attendanceSocket')(io);
 require('./socket/chatSocket')(io);
 
-// ✅ Middleware
+// ✅ Security Middleware
 app.use(helmet());
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// ✅ Attach io to app if needed in routes
+// ✅ Attach io to app (if needed in routes)
 app.set('io', io);
 
 // ✅ Health check route
@@ -56,13 +56,13 @@ app.get('/', (req, res) => {
   res.send('✅ Avengers Nexus backend is running.');
 });
 
-// ✅ Load and use routes
+// ✅ Load Routes
 const authRouter = require('./routes/userAuth');
 const postRouter = require('./routes/postAuth');
 const attendanceRouter = require('./routes/attendanceRouter');
 const feedbackRouter = require('./routes/feedbackRoutes');
 const chatRouter = require('./routes/chatRoutes');
-const missionRouter = require('./routes/missionAuth')(io); // if it uses socket
+const missionRouter = require('./routes/missionAuth')(io); // socket usage
 
 app.use('/user', authRouter);
 app.use('/mission', missionRouter);
@@ -75,21 +75,21 @@ app.use('/chat', chatRouter);
 const InitializeConnection = async () => {
   try {
     await Promise.all([main(), redisClient.connect()]);
-    console.log('MongoDB and Redis connected');
+    console.log('MongoDB and Redis connected ✅');
 
     const PORT = process.env.PORT || 4000;
     server.listen(PORT, () => {
-      console.log(`Server listening on port: ${PORT}`);
+      console.log(`🚀 Server listening on port: ${PORT}`);
     });
   } catch (err) {
-    console.error('Initialization error:', err);
+    console.error('❌ Initialization error:', err);
   }
 };
 
-// ✅ Graceful Redis shutdown
+// ✅ Graceful shutdown for Redis
 process.on('SIGINT', async () => {
   await redisClient.quit();
-  console.log('Redis disconnected');
+  console.log('Redis disconnected ❌');
   process.exit(0);
 });
 

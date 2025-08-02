@@ -1,4 +1,3 @@
-// App.jsx
 import { Navigate, Route, Routes } from "react-router";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -22,30 +21,34 @@ import ChatPage from "./pages/chatPage";
 import ProfilePage from "./pages/profilePage";
 import { initializeSocket, resetSocket } from './socket/socket';
 
+// ✅ Protected route
+const ProtectedRoute = ({ element, role }) => {
+  const { isAuthenticated, user } = useSelector(state => state.auth);
+
+  if (!isAuthenticated) return <Navigate to="/signup" />;
+  if (role && user?.role !== role) return <Navigate to="/signup" />;
+
+  return element;
+};
+
 function App() {
   const dispatch = useDispatch();
   const { isAuthenticated, user, loading } = useSelector((state) => state.auth);
 
-  // Check if user is logged in
+  // Check auth status on mount
   useEffect(() => {
     dispatch(checkAuth());
   }, [dispatch]);
 
-  // Initialize socket only if authenticated
+  // Initialize socket after login
   useEffect(() => {
     if (isAuthenticated && user?.token) {
-      console.log("🧪 isAuthenticated:", isAuthenticated);
-console.log("🧪 user token:", user?.token);
-
       initializeSocket(user.token);
     }
-
-    return () => {
-      resetSocket(); // Clean up socket on unmount or logout
-    };
+    return () => resetSocket(); // Cleanup
   }, [isAuthenticated, user?.token]);
 
-  // Show loading screen during auth check
+  // Loading state
   if (loading || isAuthenticated === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black text-white text-xl">
@@ -54,43 +57,65 @@ console.log("🧪 user token:", user?.token);
     );
   }
 
-  // Determine redirection path based on role
   const redirectPath = isAuthenticated
     ? user?.role === 'admin'
       ? '/admin'
-      : user?.role === 'user'
-        ? '/'
-        : '/signup'
+      : '/'
     : '/signup';
 
   return (
     <Routes>
-      <Route path="/" element={
-        isAuthenticated
-          ? (user?.role === 'admin' ? <Navigate to="/admin" /> : <Homepage />)
-          : <Navigate to="/signup" />
-      } />
+      <Route
+        path="/"
+        element={
+          isAuthenticated
+            ? user?.role === 'admin'
+              ? <Navigate to="/admin" />
+              : <Homepage />
+            : <Navigate to="/signup" />
+        }
+      />
+
       <Route path="/login" element={isAuthenticated ? <Navigate to={redirectPath} /> : <Login />} />
       <Route path="/signup" element={isAuthenticated ? <Navigate to={redirectPath} /> : <Signup />} />
-      <Route path="/missions" element={isAuthenticated ? <MissionsPage /> : <Navigate to="/signup" />} />
-      <Route path="/posts" element={isAuthenticated ? <PostsPage /> : <Navigate to="/signup" />} />
-      <Route path="/your-missions" element={isAuthenticated ? <UserMission /> : <Navigate to="/signup" />} />
-      <Route path="/admin" element={isAuthenticated ? <AdminPanel /> : <Navigate to="/signup" />} />
-      <Route path="/missionupdations" element={isAuthenticated ? <MissionUpdations /> : <Navigate to="/signup" />} />
-      <Route path="/postupdations" element={isAuthenticated ? <PostUpdations /> : <Navigate to="/signup" />} />
-      <Route path="/avengers" element={isAuthenticated ? <Avengers /> : <Navigate to="/signup" />} />
-      <Route path="/your-reward" element={isAuthenticated ? <UserReward /> : <Navigate to="/signup" />} />
-      <Route path="/attendaceupdations" element={isAuthenticated && user?.role === 'admin' ? (
-        <AttendanceStart adminId={user._id} token={localStorage.getItem('token')} />
-      ) : <Navigate to="/signup" />} />
-      <Route path="/attendance-summary" element={isAuthenticated && user?.role === 'user' ? (
-        <AttendanceSubmit userId={user._id} token={localStorage.getItem('token')} />
-      ) : <Navigate to="/signup" />} />
-      <Route path="/attendance" element={isAuthenticated ? <Attendance /> : <Navigate to="/signup" />} />
-      <Route path="/feedbacks" element={isAuthenticated ? <AdminFeedbackPage /> : <Navigate to="/signup" />} />
-      <Route path="/chats" element={isAuthenticated ? <ChatPage /> : <Navigate to="/signup" />} />
-      <Route path="/profile" element={isAuthenticated ? <ProfilePage /> : <Navigate to="/signup" />} />
 
+      {/* ✅ Protected Routes */}
+      <Route path="/missions" element={<ProtectedRoute element={<MissionsPage />} />} />
+      <Route path="/posts" element={<ProtectedRoute element={<PostsPage />} />} />
+      <Route path="/your-missions" element={<ProtectedRoute element={<UserMission />} />} />
+      <Route path="/admin" element={<ProtectedRoute element={<AdminPanel />} role="admin" />} />
+      <Route path="/missionupdations" element={<ProtectedRoute element={<MissionUpdations />} />} />
+      <Route path="/postupdations" element={<ProtectedRoute element={<PostUpdations />} />} />
+      <Route path="/avengers" element={<ProtectedRoute element={<Avengers />} />} />
+      <Route path="/your-reward" element={<ProtectedRoute element={<UserReward />} />} />
+      
+      <Route
+        path="/attendaceupdations"
+        element={
+          <ProtectedRoute
+            element={<AttendanceStart adminId={user?._id} token={user?.token} />}
+            role="admin"
+          />
+        }
+      />
+
+      <Route
+        path="/attendance-summary"
+        element={
+          <ProtectedRoute
+            element={<AttendanceSubmit userId={user?._id} token={user?.token} />}
+            role="user"
+          />
+        }
+      />
+
+      <Route path="/attendance" element={<ProtectedRoute element={<Attendance />} />} />
+      <Route path="/feedbacks" element={<ProtectedRoute element={<AdminFeedbackPage />} />} />
+      <Route path="/chats" element={<ProtectedRoute element={<ChatPage />} />} />
+      <Route path="/profile" element={<ProtectedRoute element={<ProfilePage />} />} />
+
+      {/* Catch all */}
+      <Route path="*" element={<Navigate to={redirectPath} />} />
     </Routes>
   );
 }

@@ -10,26 +10,60 @@ const adminMiddleware = async (req, res, next) => {
       token = req.headers.authorization.split(" ")[1];
     }
 
-    if (!token) throw new Error("Token is not present");
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        error: "auth/no-token",
+        message: "Token is missing",
+      });
+    }
 
-    const payload = jwt.verify(token, process.env.JWT_KEY);
-    const { _id } = payload;
+    const isBlocked = await redisClient.get(`token:${token}`);
+    if (isBlocked) {
+      return res.status(401).json({
+        success: false,
+        error: "auth/token-blocked",
+        message: "Session expired. Please log in again.",
+      });
+    }
 
-    const isBlocked = await redisClient.exists(`token:${token}`);
-    if (isBlocked) throw new Error("Invalid Token (blacklisted)");
+    let payload;
+    try {
+      payload = jwt.verify(token, process.env.JWT_KEY);
+    } catch (err) {
+      return res.status(401).json({
+        success: false,
+        error: "auth/invalid-token",
+        message: "Invalid or expired token",
+      });
+    }
 
-    const user = await User.findById(_id);
-    if (!user) throw new Error("User doesn't exist");
+    const user = await User.findById(payload._id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: "auth/user-not-found",
+        message: "User does not exist",
+      });
+    }
 
-    if (user.role !== 'admin') {
-      throw new Error("Access denied: Admins only");
+    if (user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        error: "auth/forbidden",
+        message: "Access denied: Admins only",
+      });
     }
 
     req.user = user;
     next();
   } catch (error) {
     console.error("🔐 Admin Middleware Error:", error.message);
-    return res.status(403).json({ success: false, message: error.message });
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 };
 

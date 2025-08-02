@@ -97,58 +97,51 @@ const login = async (req, res) => {
     const match = await bcrypt.compare(passWord, user.passWord);
     if (!match) throw new Error("Invalid Credentials");
 
-    const token = generateToken(user);
+    const token = generateToken(user); // JWT with expiry
 
+    // ✅ Set cookie for frontend usage
     res.cookie("token", token, {
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production", // true in prod
-  sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
-  path: "/", // must match during clear
-});
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // only send over HTTPS in prod
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax", // allow cross-origin in prod
+      path: "/",
+    });
 
-
-    // ✅ Send token in response too
     res.status(200).json({
-      token, // ⬅️ This enables frontend to store in Redux
+      token, // optional: for Redux/localStorage
       user: {
+        _id: user._id,
         firstName: user.firstName,
         emailId: user.emailId,
-        _id: user._id,
         role: user.role,
       },
-      message: "Login successfully",
+      message: "Login successful",
     });
   } catch (err) {
     console.error("Login Error:", err.message);
-    res.status(401).send("Error: " + err.message);
+    res.status(401).json({ message: "Login failed", error: err.message });
   }
 };
-
-
-// -------------------- Logout --------------------
 
 const logout = async (req, res) => {
   try {
     const { token } = req.cookies;
     if (!token) throw new Error("Token missing in cookies");
 
-    // Decode to get expiry
     const payload = jwt.decode(token);
     if (!payload?.exp) throw new Error("Invalid token");
 
-    // Block token in Redis
     await redisClient.set(`token:${token}`, "Blocked");
     await redisClient.expireAt(`token:${token}`, payload.exp);
 
-    // Clear cookie properly
+    // ✅ Must match original cookie attributes to clear
     res.clearCookie("token", {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
-  path: "/", // must match
-});
-
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+      path: "/",
+    });
 
     res.status(200).json({ message: "Logged out successfully" });
   } catch (err) {
