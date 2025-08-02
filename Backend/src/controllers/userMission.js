@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken");
 const validate = require("../utils/validator");
 const mongoose = require('mongoose')
 const User = require("../models/user")
-const Chat = require('../models/Chat');
+const Chat = require('../models/chat');
 const Message = require('../models/Message')
 require("dotenv").config();
 
