@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-import axios from 'axios';
+import axiosClient from '../utils/axiosClient'; // Import axiosClient
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaCalendarAlt } from 'react-icons/fa';
 import AdminNavbar from '../components/AdminNavbar';
@@ -69,10 +69,7 @@ const Attendance = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.get(
-        `http://localhost:4000/attendance/date/${formattedDate}`,
-        { withCredentials: true }
-      );
+      const response = await axiosClient.get(`/attendance/date/${formattedDate}`); // Use axiosClient
       const data = Array.isArray(response.data.attendance) ? response.data.attendance : [];
       setAttendanceData(data);
     } catch (err) {
@@ -86,10 +83,9 @@ const Attendance = () => {
   const fetchDailyCounts = async () => {
     setGraphLoading(true);
     try {
-      const response = await axios.get(
-        `http://localhost:4000/attendance/daily-counts?month=${month + 1}&year=${year}`,
-        { withCredentials: true }
-      );
+      const response = await axiosClient.get(
+        `/attendance/daily-counts?month=${month + 1}&year=${year}`
+      ); // Use axiosClient
       console.log('Daily Counts API Response:', response.data); // Debug log
       const data = Array.isArray(response.data) ? response.data : [];
       setDailyCounts(data);
@@ -106,10 +102,9 @@ const Attendance = () => {
     const fetchMonthlyAttendance = async () => {
       setGraphLoading(true);
       try {
-        const res = await axios.get(
-          `http://localhost:4000/attendance/monthly-summary?month=${month + 1}&year=${year}`,
-          { withCredentials: true }
-        );
+        const res = await axiosClient.get(
+          `/attendance/monthly-summary?month=${month + 1}&year=${year}`
+        ); // Use axiosClient
         console.log('Monthly Data API Response:', res.data); // Debug log
         const data = Array.isArray(res.data.summary) ? res.data.summary : [];
         setMonthlyData(data);

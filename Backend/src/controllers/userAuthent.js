@@ -18,10 +18,17 @@ const generateToken = (user) => {
 const SendOtpSignup = async (req, res) => {
   const { emailId } = req.body;
   const normalizedEmail = emailId.trim().toLowerCase();
-  const otp = Math.floor(1000 + Math.random() * 9000).toString();
 
   try {
-    await redisClient.set(`otp:${normalizedEmail}`, otp, { EX: 300 }); // expires in 5 min
+    // ✅ Check if user already exists (Signup-specific)
+    const existingUser = await User.findOne({ emailId: normalizedEmail });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    // ✅ Generate and store OTP
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    await redisClient.set(`otp:${normalizedEmail}`, otp, { EX: 300 }); 
     await sendOtpMail(normalizedEmail, otp);
 
     console.log("OTP sent to:", normalizedEmail, "=>", otp);
@@ -31,6 +38,8 @@ const SendOtpSignup = async (req, res) => {
     res.status(500).json({ error: "Error sending OTP" });
   }
 };
+
+
 
 // STEP 2: Verify OTP
 const VerifyOtpSignup = async (req, res) => {
@@ -56,30 +65,43 @@ const VerifyOtpSignup = async (req, res) => {
 
 const register = async (req, res) => {
   const { firstName, emailId, passWord } = req.body;
+
+  // Normalize email (to handle case-insensitive duplicates)
   const normalizedEmail = emailId.trim().toLowerCase();
 
   try {
+    // ✅ 1. Check if email is verified via OTP (from Redis)
     const isVerified = await redisClient.get(`verified:${normalizedEmail}`);
     if (isVerified !== "true") {
-      return res.status(400).json({ message: "Please verify OTP before registering." });
+      return res.status(400).json({ message: "❌ Please verify OTP before registering." });
     }
 
+    // ✅ 2. Check if user already exists (to avoid duplicates)
     const existingUser = await User.findOne({ emailId: normalizedEmail });
     if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({ message: "❌ Email is already registered." });
     }
 
-    // ✅ Hash the password before saving
+    // ✅ 3. Hash password before storing
     const hashedPassword = await bcrypt.hash(passWord, 10);
 
-    const newUser = new User({ firstName, emailId: normalizedEmail, passWord: hashedPassword });
+    // ✅ 4. Create new user
+    const newUser = new User({
+      firstName,
+      emailId: normalizedEmail,
+      passWord: hashedPassword,
+    });
+
     await newUser.save();
+
+    // ✅ 5. Clear Redis verification after successful signup
     await redisClient.del(`verified:${normalizedEmail}`);
 
-    res.status(201).json({ message: "User registered successfully" });
+    return res.status(201).json({ message: "✅ User registered successfully." });
+
   } catch (err) {
-    console.error("Registration Error:", err.message);
-    res.status(500).json({ message: "Registration failed" });
+    console.error("❌ Registration Error:", err.message);
+    return res.status(500).json({ message: "❌ Internal server error. Please try again." });
   }
 };
 

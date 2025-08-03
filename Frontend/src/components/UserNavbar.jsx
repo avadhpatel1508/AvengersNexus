@@ -25,7 +25,7 @@ function UserNavbar() {
     const userLinks = [
         { to: '/profile', label: 'Profile' },
         { to: '/your-reward', label: 'Your Reward' },
-        { to: '/attendance-summary', label: 'Attendance' },
+        { to: '/attendance-summary', label: 'Your Attendance' },
         { to: '/your-missions', label: 'Your Missions' }
     ];
 

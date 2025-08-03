@@ -20,13 +20,14 @@ import AdminFeedbackPage from "./pages/Feedbackupdations";
 import ChatPage from "./pages/chatPage";
 import ProfilePage from "./pages/profilePage";
 import { initializeSocket, resetSocket } from './socket/socket';
+import Features from "./pages/FirstPage";
 
-// ✅ Protected route
+// Protected route
 const ProtectedRoute = ({ element, role }) => {
   const { isAuthenticated, user } = useSelector(state => state.auth);
 
-  if (!isAuthenticated) return <Navigate to="/signup" />;
-  if (role && user?.role !== role) return <Navigate to="/signup" />;
+  if (!isAuthenticated) return <Navigate to="/Dashboard" />;
+  if (role && user?.role !== role) return <Navigate to="/Dashboard" />;
 
   return element;
 };
@@ -61,7 +62,7 @@ function App() {
     ? user?.role === 'admin'
       ? '/admin'
       : '/'
-    : '/signup';
+    : '/Dashboard';
 
   return (
     <Routes>
@@ -72,44 +73,45 @@ function App() {
             ? user?.role === 'admin'
               ? <Navigate to="/admin" />
               : <Homepage />
-            : <Navigate to="/signup" />
+            : <Navigate to="/Dashboard" />
         }
       />
 
       <Route path="/login" element={isAuthenticated ? <Navigate to={redirectPath} /> : <Login />} />
       <Route path="/signup" element={isAuthenticated ? <Navigate to={redirectPath} /> : <Signup />} />
+      <Route
+        path="/Dashboard"
+        element={
+          isAuthenticated
+            ? <Navigate to={user?.role === 'admin' ? '/admin' : '/'} />
+            : <Features />
+        }
+      />
 
-      {/* ✅ Protected Routes */}
-      <Route path="/missions" element={<ProtectedRoute element={<MissionsPage />} />} />
-      <Route path="/posts" element={<ProtectedRoute element={<PostsPage />} />} />
+      {/* Public Routes */}
+      <Route path="/missions" element={<MissionsPage />} />
+      <Route path="/posts" element={<PostsPage />} />
+      <Route path="/attendance" element={<Attendance />} />
+      <Route path="/avengers" element={<Avengers />} />
+
+      {/* Protected Routes */}
       <Route path="/your-missions" element={<ProtectedRoute element={<UserMission />} />} />
       <Route path="/admin" element={<ProtectedRoute element={<AdminPanel />} role="admin" />} />
       <Route path="/missionupdations" element={<ProtectedRoute element={<MissionUpdations />} />} />
       <Route path="/postupdations" element={<ProtectedRoute element={<PostUpdations />} />} />
-      <Route path="/avengers" element={<ProtectedRoute element={<Avengers />} />} />
       <Route path="/your-reward" element={<ProtectedRoute element={<UserReward />} />} />
-      
-      <Route
-        path="/attendaceupdations"
-        element={
-          <ProtectedRoute
-            element={<AttendanceStart adminId={user?._id} token={user?.token} />}
-            role="admin"
-          />
-        }
-      />
-
-      <Route
-        path="/attendance-summary"
-        element={
-          <ProtectedRoute
-            element={<AttendanceSubmit userId={user?._id} token={user?.token} />}
-            role="user"
-          />
-        }
-      />
-
-      <Route path="/attendance" element={<ProtectedRoute element={<Attendance />} />} />
+      <Route path="/attendaceupdations" element={
+        <ProtectedRoute
+          element={<AttendanceStart adminId={user?._id} token={user?.token} />}
+          role="admin"
+        />
+      } />
+      <Route path="/attendance-summary" element={
+        <ProtectedRoute
+          element={<AttendanceSubmit userId={user?._id} token={user?.token} />}
+          role="user"
+        />
+      } />
       <Route path="/feedbacks" element={<ProtectedRoute element={<AdminFeedbackPage />} />} />
       <Route path="/chats" element={<ProtectedRoute element={<ChatPage />} />} />
       <Route path="/profile" element={<ProtectedRoute element={<ProfilePage />} />} />

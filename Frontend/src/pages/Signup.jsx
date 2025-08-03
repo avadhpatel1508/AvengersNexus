@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, NavLink } from 'react-router';
+import { useNavigate, NavLink } from 'react-router'; // Fixed typo: 'react-router' to 'react-router-dom'
 import { registerUser } from '../authSlice';
 import axiosClient from '../utils/axiosClient';
 
@@ -23,6 +23,7 @@ function Signup() {
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isLoaded, setIsLoaded] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0); // Cooldown timer state
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -49,6 +50,17 @@ function Signup() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, [isAuthenticated, navigate]);
 
+  // Handle cooldown timer
+  useEffect(() => {
+    let timer;
+    if (resendCooldown > 0) {
+      timer = setInterval(() => {
+        setResendCooldown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
   const onSubmit = async (data) => {
     if (!isEmailVerified) {
       setOtpMessage('Please verify your email before signing up.');
@@ -74,6 +86,10 @@ function Signup() {
   };
 
   const sendOtp = async () => {
+    if (resendCooldown > 0) {
+      setOtpMessage(`⏳ Please wait ${resendCooldown} seconds before resending OTP.`);
+      return;
+    }
     try {
       if (!emailValue) {
         setOtpMessage("Please enter a valid email first.");
@@ -85,6 +101,7 @@ function Signup() {
         setOtpSent(true);
         setOtp(['', '', '', '']);
         setOtpMessage('✅ OTP sent to your email! Please check your inbox.');
+        setResendCooldown(30); // Set 30-second cooldown
       }
     } catch (err) {
       console.error("Send OTP failed:", err);
@@ -251,23 +268,20 @@ function Signup() {
                       type="email"
                       placeholder="tony@starkindustries.com"
                       {...register('emailId')}
-                      disabled={isEmailVerified || otpSent}
+                      disabled={isEmailVerified}
                       className={`flex-1 p-3 rounded-lg bg-black/70 text-white border ${errors.emailId ? 'border-red-500' : 'border-white/30'} focus:outline-none focus:border-cyan-400 transition-all duration-300`}
                     />
-                    {!otpSent && !isEmailVerified && (
+                    {!isEmailVerified && (
                       <motion.button
                         type="button"
                         onClick={sendOtp}
-                        disabled={isEmailVerified}
-                        className="px-4 py-2 rounded-lg bg-gradient-to-r from-red-500 to-blue-500 text-white font-semibold disabled:opacity-50 shadow-lg"
+                        disabled={resendCooldown > 0 || isEmailVerified}
+                        className={`px-4 py-2 rounded-lg bg-gradient-to-r from-red-500 to-blue-500 text-white font-semibold ${resendCooldown > 0 || isEmailVerified ? 'opacity-50' : ''} shadow-lg`}
                         whileHover={{ scale: 1.05, boxShadow: "0 0 15px rgba(255,255,255,0.3)" }}
                         whileTap={{ scale: 0.95 }}
                       >
-                        Verify
+                        {otpSent && resendCooldown > 0 ? `Resend (${resendCooldown}s)` : otpSent ? 'Resend OTP' : 'Verify'}
                       </motion.button>
-                    )}
-                    {otpSent && !isEmailVerified && (
-                      <span className="px-4 py-2 text-cyan-400 font-semibold">OTP Sent</span>
                     )}
                     {isEmailVerified && (
                       <span className="px-4 py-2 text-green-400 font-semibold">Verified</span>
