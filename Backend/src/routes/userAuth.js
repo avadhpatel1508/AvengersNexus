@@ -1,6 +1,6 @@
 const express = require('express');
 const authRouter = express.Router();
-const { register, login, logout, adminRegister, deleteProfile, getAllUsers, getUserById , SendOtpSignup , VerifyOtpSignup, checkUsername} = require("../controllers/userAuthent");
+const { register, login, logout, adminRegister, deleteProfile, getAllUsers, getUserById , SendOtpSignup , VerifyOtpSignup} = require("../controllers/userAuthent");
 const userMiddleware = require("../middleware/userMiddleware");
 const adminMiddleware = require("../middleware/adminMiddleware");
 
@@ -26,7 +26,6 @@ authRouter.get('/users', getAllUsers);
 authRouter.get('/getUser/:id', getUserById)
 authRouter.post('/send-otp', SendOtpSignup);
 authRouter.post('/verify-otp', VerifyOtpSignup);
-authRouter.post('/check-username', checkUsername);
 
 
 
