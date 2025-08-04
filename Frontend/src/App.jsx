@@ -21,6 +21,7 @@ import ChatPage from "./pages/chatPage";
 import ProfilePage from "./pages/profilePage";
 import { initializeSocket, resetSocket } from './socket/socket';
 import Features from "./pages/FirstPage";
+import UserProfile from "./pages/userProfile";
 
 // Protected route
 const ProtectedRoute = ({ element, role }) => {
@@ -79,6 +80,7 @@ function App() {
 
       <Route path="/login" element={isAuthenticated ? <Navigate to={redirectPath} /> : <Login />} />
       <Route path="/signup" element={isAuthenticated ? <Navigate to={redirectPath} /> : <Signup />} />
+      
       <Route
         path="/Dashboard"
         element={
@@ -100,6 +102,8 @@ function App() {
       <Route path="/missionupdations" element={<ProtectedRoute element={<MissionUpdations />} />} />
       <Route path="/postupdations" element={<ProtectedRoute element={<PostUpdations />} />} />
       <Route path="/your-reward" element={<ProtectedRoute element={<UserReward />} />} />
+      <Route path="/userProfile" element={<ProtectedRoute element={<UserProfile />} />} />
+
       <Route path="/attendaceupdations" element={
         <ProtectedRoute
           element={<AttendanceStart adminId={user?._id} token={user?.token} />}

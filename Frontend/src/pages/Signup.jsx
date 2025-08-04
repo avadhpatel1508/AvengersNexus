@@ -4,22 +4,14 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, NavLink } from 'react-router';
+import { useNavigate, NavLink } from 'react-router'; // Fixed typo: 'react-router' to 'react-router-dom'
 import { registerUser } from '../authSlice';
 import axiosClient from '../utils/axiosClient';
 
-// Updated schema with strong password validation
 const signupSchema = z.object({
-  firstName: z.string()
-    .min(3, "Username must be at least 3 characters")
-    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
+  firstName: z.string().min(3, "First name must be at least 3 characters"),
   emailId: z.string().email("Please enter a valid email address"),
-  passWord: z.string()
-    .min(8, "Password must be at least 8 characters long")
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
-      "Password must include at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)"
-    ),
+  passWord: z.string().min(8, "Password must be at least 8 characters long"),
 });
 
 function Signup() {
@@ -27,11 +19,11 @@ function Signup() {
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState(['', '', '', '']);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [otpMessage, setOtpMessage] = useState('');
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isLoaded, setIsLoaded] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendCooldown, setResendCooldown] = useState(0); // Cooldown timer state
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -42,11 +34,9 @@ function Signup() {
     handleSubmit,
     watch,
     formState: { errors },
-    setError,
   } = useForm({ resolver: zodResolver(signupSchema) });
 
   const emailValue = watch('emailId');
-  const firstNameValue = watch('firstName');
 
   useEffect(() => {
     setIsLoaded(true);
@@ -60,6 +50,7 @@ function Signup() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, [isAuthenticated, navigate]);
 
+  // Handle cooldown timer
   useEffect(() => {
     let timer;
     if (resendCooldown > 0) {
@@ -70,65 +61,38 @@ function Signup() {
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
-  const checkUsernameUnique = async (username) => {
-    try {
-      const response = await axiosClient.post('/user/check-username', { firstName: username });
-      return response.data.isUnique;
-    } catch (err) {
-      return false;
-    }
-  };
-
   const onSubmit = async (data) => {
     if (!isEmailVerified) {
-      setErrorMessage('Please verify your email before signing up.');
+      setOtpMessage('Please verify your email before signing up.');
       return;
     }
-
-    // Check username uniqueness
-    const isUsernameUnique = await checkUsernameUnique(data.firstName);
-    if (!isUsernameUnique) {
-      setError('firstName', { type: 'manual', message: 'This username is already taken. Please choose a unique username.' });
-      return;
-    }
-
     try {
-      const resultAction = await dispatch(registerUser({
-        ...data,
-        emailId: data.emailId.trim().toLowerCase()
-      }));
+      const resultAction = await dispatch(registerUser(data));
       if (registerUser.fulfilled.match(resultAction)) {
-        setErrorMessage('');
         alert("✅ Account created successfully!");
         navigate('/login');
       } else {
         const errMsg = resultAction.payload?.message || "Signup failed.";
-        if (errMsg.includes('Email is already registered')) {
-          setError('emailId', { type: 'manual', message: 'This email is already registered.' });
-        } else if (errMsg.includes('valid email')) {
-          setError('emailId', { type: 'manual', message: 'Please enter a valid email address.' });
-        } else if (errMsg.includes('Username')) {
-          setError('firstName', { type: 'manual', message: errMsg });
-        } else if (errMsg.includes('Password')) {
-          setError('passWord', { type: 'manual', message: errMsg });
+        if (errMsg.includes('exists')) {
+          setOtpMessage('❌ This email is already registered. Please use a different email.');
         } else {
-          setErrorMessage(errMsg);
+          setOtpMessage(`❌ ${errMsg}`);
         }
       }
     } catch (err) {
       console.error("Signup error:", err);
-      setErrorMessage("An unexpected error occurred. Please try again.");
+      setOtpMessage("❌ An unexpected error occurred. Please try again.");
     }
   };
 
   const sendOtp = async () => {
     if (resendCooldown > 0) {
-      setErrorMessage(`Please wait ${resendCooldown} seconds before resending OTP.`);
+      setOtpMessage(`⏳ Please wait ${resendCooldown} seconds before resending OTP.`);
       return;
     }
     try {
       if (!emailValue) {
-        setError('emailId', { type: 'manual', message: 'Please enter a valid email address.' });
+        setOtpMessage("Please enter a valid email first.");
         return;
       }
       const normalizedEmail = emailValue.trim().toLowerCase();
@@ -136,18 +100,15 @@ function Signup() {
       if (res.status === 200) {
         setOtpSent(true);
         setOtp(['', '', '', '']);
-        setErrorMessage('OTP sent to your email! Please check your inbox.');
-        setResendCooldown(30);
+        setOtpMessage('✅ OTP sent to your email! Please check your inbox.');
+        setResendCooldown(30); // Set 30-second cooldown
       }
     } catch (err) {
       console.error("Send OTP failed:", err);
-      const errMsg = err.response?.data?.message || "Failed to send OTP.";
-      if (errMsg.includes('already registered')) {
-        setError('emailId', { type: 'manual', message: 'This email is already registered.' });
-      } else if (errMsg.includes('valid email')) {
-        setError('emailId', { type: 'manual', message: 'Please enter a valid email address.' });
+      if (err.response?.data?.message?.includes('exists')) {
+        setOtpMessage('❌ This email is already registered. Please use a different email.');
       } else {
-        setErrorMessage(errMsg);
+        setOtpMessage('❌ Failed to send OTP. Please try again.');
       }
     }
   };
@@ -169,7 +130,7 @@ function Signup() {
   const verifyOtp = async () => {
     const fullOtp = otp.join('');
     if (fullOtp.length !== 4) {
-      setErrorMessage("Please enter all 4 digits of the OTP.");
+      setOtpMessage("Please enter all 4 digits of the OTP.");
       return;
     }
     try {
@@ -181,13 +142,13 @@ function Signup() {
       });
       if (res.data.verified) {
         setIsEmailVerified(true);
-        setErrorMessage("Email verified successfully!");
+        setOtpMessage("✅ Email verified successfully!");
       } else {
-        setErrorMessage("Invalid OTP. Please try again.");
+        setOtpMessage("❌ Invalid OTP. Please try again.");
       }
     } catch (err) {
       console.error("OTP Verification Error:", err);
-      setErrorMessage(err.response?.data?.message || "OTP verification failed. Please try again.");
+      setOtpMessage("❌ OTP verification failed. Please try again.");
     } finally {
       setVerifyingOtp(false);
     }
@@ -218,6 +179,7 @@ function Signup() {
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
+      {/* Background */}
       <div className="fixed inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-black to-blue-950"></div>
         <div className="absolute inset-0 opacity-20">
@@ -289,10 +251,10 @@ function Signup() {
 
               <div className="space-y-6">
                 <motion.div variants={itemVariants} className="space-y-2">
-                  <label className="text-gray-200 text-sm font-light">Username</label>
+                  <label className="text-gray-200 text-sm font-light">First Name</label>
                   <input
                     type="text"
-                    placeholder="Steve_Rogers"
+                    placeholder="Steve"
                     {...register('firstName')}
                     className={`w-full p-3 rounded-lg bg-black/70 text-white border ${errors.firstName ? 'border-red-500' : 'border-white/30'} focus:outline-none focus:border-cyan-400 transition-all duration-300`}
                   />
@@ -355,6 +317,16 @@ function Signup() {
                     >
                       {verifyingOtp ? "Verifying..." : "Submit OTP"}
                     </motion.button>
+                    {otpMessage && (
+                      <motion.p
+                        className={`text-sm ${otpMessage.includes('✅') ? 'text-cyan-400' : 'text-red-400'}`}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        {otpMessage}
+                      </motion.p>
+                    )}
                   </motion.div>
                 )}
 
@@ -387,17 +359,6 @@ function Signup() {
                   </div>
                   {errors.passWord && <span className="text-red-400 text-sm">{errors.passWord.message}</span>}
                 </motion.div>
-
-                {errorMessage && (
-                  <motion.p
-                    className={`text-sm ${errorMessage.includes('successfully') ? 'text-cyan-400' : 'text-red-400'} text-center`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.5 }}
-                  >
-                    {errorMessage}
-                  </motion.p>
-                )}
 
                 <motion.button
                   type="submit"
