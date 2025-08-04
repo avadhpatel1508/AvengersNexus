@@ -14,32 +14,47 @@ const generateToken = (user) => {
   );
 };
 
+// Helper to validate email format
+const isValidEmail = (email) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+// Helper to validate password strength
+const isStrongPassword = (password) => {
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+  return passwordRegex.test(password);
+};
+
 // -------------------- Register --------------------
 const SendOtpSignup = async (req, res) => {
   const { emailId } = req.body;
   const normalizedEmail = emailId.trim().toLowerCase();
 
   try {
-    // ✅ Check if user already exists (Signup-specific)
-    const existingUser = await User.findOne({ emailId: normalizedEmail });
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+    // Validate email format
+    if (!isValidEmail(normalizedEmail)) {
+      return res.status(400).json({ message: "Please enter a valid email address" });
     }
 
-    // ✅ Generate and store OTP
+    // Check if user already exists
+    const existingUser = await User.findOne({ emailId: normalizedEmail });
+    if (existingUser) {
+      return res.status(400).json({ message: "This email is already registered" });
+    }
+
+    // Generate and store OTP
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
-    await redisClient.set(`otp:${normalizedEmail}`, otp, { EX: 300 }); 
+    await redisClient.set(`otp:${normalizedEmail}`, otp, { EX: 300 });
     await sendOtpMail(normalizedEmail, otp);
 
     console.log("OTP sent to:", normalizedEmail, "=>", otp);
-    res.status(200).json({ message: "OTP sent" });
+    res.status(200).json({ message: "OTP sent successfully" });
   } catch (err) {
     console.error("OTP Send Error:", err.message);
     res.status(500).json({ error: "Error sending OTP" });
   }
 };
-
-
 
 // STEP 2: Verify OTP
 const VerifyOtpSignup = async (req, res) => {
@@ -50,7 +65,7 @@ const VerifyOtpSignup = async (req, res) => {
     const storedOtp = await redisClient.get(`otp:${normalizedEmail}`);
     if (storedOtp === otp) {
       await redisClient.del(`otp:${normalizedEmail}`);
-      await redisClient.set(`verified:${normalizedEmail}`, "true", { EX: 600 }); // valid for 10 min
+      await redisClient.set(`verified:${normalizedEmail}`, "true", { EX: 600 });
       return res.status(200).json({ verified: true });
     } else {
       return res.status(400).json({ verified: false, error: "Invalid OTP" });
@@ -61,47 +76,61 @@ const VerifyOtpSignup = async (req, res) => {
   }
 };
 
-
-
 const register = async (req, res) => {
   const { firstName, emailId, passWord } = req.body;
-
-  // Normalize email (to handle case-insensitive duplicates)
   const normalizedEmail = emailId.trim().toLowerCase();
 
   try {
-    // ✅ 1. Check if email is verified via OTP (from Redis)
+    // 1. Check if email is verified via OTP
     const isVerified = await redisClient.get(`verified:${normalizedEmail}`);
     if (isVerified !== "true") {
-      return res.status(400).json({ message: "❌ Please verify OTP before registering." });
+      return res.status(400).json({ message: "Please verify your email with OTP before registering" });
     }
 
-    // ✅ 2. Check if user already exists (to avoid duplicates)
+    // 2. Validate username (firstName)
+    if (!firstName || firstName.trim().length < 3) {
+      return res.status(400).json({ message: "Username must be at least 3 characters long" });
+    }
+
+    // 3. Check if username is unique
+    const existingUsername = await User.findOne({ firstName: firstName.trim() });
+    if (existingUsername) {
+      return res.status(400).json({ message: "This username is already taken. Please choose a unique username" });
+    }
+
+    // 4. Validate password strength
+    if (!isStrongPassword(passWord)) {
+      return res.status(400).json({ 
+        message: "Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)"
+      });
+    }
+
+    // 5. Check if email is already registered
     const existingUser = await User.findOne({ emailId: normalizedEmail });
     if (existingUser) {
-      return res.status(400).json({ message: "❌ Email is already registered." });
+      return res.status(400).json({ message: "This email is already registered" });
     }
 
-    // ✅ 3. Hash password before storing
+    // 6. Hash password
     const hashedPassword = await bcrypt.hash(passWord, 10);
 
-    // ✅ 4. Create new user
+    // 7. Create new user
     const newUser = new User({
-      firstName,
+      firstName: firstName.trim(),
       emailId: normalizedEmail,
       passWord: hashedPassword,
     });
 
     await newUser.save();
 
-    // ✅ 5. Clear Redis verification after successful signup
+    // 8. Clear Redis verification
     await redisClient.del(`verified:${normalizedEmail}`);
 
-    return res.status(201).json({ message: "✅ User registered successfully." });
+    return res.status(201).json({ message: "User registered successfully" });
 
   } catch (err) {
-    console.error("❌ Registration Error:", err.message);
-    return res.status(500).json({ message: "❌ Internal server error. Please try again." });
+    console.error("Registration Error:", err.message);
+    return res.status(500).json({ message: "Internal server error. Please try again" });
   }
 };
 
@@ -119,19 +148,18 @@ const login = async (req, res) => {
     const match = await bcrypt.compare(passWord, user.passWord);
     if (!match) throw new Error("Invalid Credentials");
 
-    const token = generateToken(user); // JWT with expiry
+    const token = generateToken(user);
 
-    // ✅ Set cookie for frontend usage
     res.cookie("token", token, {
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000,
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // only send over HTTPS in prod
-      sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax", // allow cross-origin in prod
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
       path: "/",
     });
 
     res.status(200).json({
-      token, // optional: for Redux/localStorage
+      token,
       user: {
         _id: user._id,
         firstName: user.firstName,
@@ -146,6 +174,7 @@ const login = async (req, res) => {
   }
 };
 
+// -------------------- Logout --------------------
 const logout = async (req, res) => {
   try {
     const { token } = req.cookies;
@@ -157,7 +186,6 @@ const logout = async (req, res) => {
     await redisClient.set(`token:${token}`, "Blocked");
     await redisClient.expireAt(`token:${token}`, payload.exp);
 
-    // ✅ Must match original cookie attributes to clear
     res.clearCookie("token", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -171,8 +199,6 @@ const logout = async (req, res) => {
     res.status(400).json({ message: "Logout failed", error: err.message });
   }
 };
-
-
 
 // -------------------- Admin Register --------------------
 const adminRegister = async (req, res) => {
@@ -260,7 +286,6 @@ const getUserById = async (req, res) => {
       return res.status(400).json({ message: "Invalid user ID format" });
     }
 
-    // Include totalReward and paymentInfo here
     const user = await User.findById(userId).select("_id firstName emailId role totalReward paymentInfo");
 
     if (!user) {
@@ -281,8 +306,20 @@ const getUserById = async (req, res) => {
     res.status(500).json({ message: "Server error while fetching user" });
   }
 };
-
-
+const checkUsername = async (req, res) => {
+  try {
+    const { firstName } = req.body;
+    if (!firstName || firstName.trim().length < 3) {
+      return res.status(400).json({ message: "Username must be at least 3 characters" });
+    }
+    const normalizedFirstName = firstName.trim();
+    const existingUser = await User.findOne({ firstName: normalizedFirstName });
+    res.status(200).json({ isUnique: !existingUser });
+  } catch (err) {
+    console.error("Check Username Error:", err.message);
+    res.status(500).json({ message: "Error checking username" });
+  }
+};
 
 module.exports = {
   register,
@@ -295,4 +332,5 @@ module.exports = {
   getUserById,
   SendOtpSignup,
   VerifyOtpSignup,
+  checkUsername
 };

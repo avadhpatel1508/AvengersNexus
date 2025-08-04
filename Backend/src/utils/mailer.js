@@ -18,7 +18,6 @@ async function sendOtpMail(to, otp) {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; background-color: #0c0c0c; color: #ffffff;">
         <div style="text-align: center; padding-bottom: 20px;">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/f/f9/Avengers_Logo_2012.svg" alt="AvengerNexu" style="height: 60px;" />
         </div>
         <h2 style="text-align: center; color: #ffffff;">Welcome to AvengerNexu!</h2>
         <p style="font-size: 16px; color: #dddddd; text-align: center;">
@@ -33,7 +32,7 @@ async function sendOtpMail(to, otp) {
         <hr style="border: none; border-top: 1px solid #333; margin: 30px 0;">
         <p style="text-align: center; color: #888888; font-size: 13px;">
           With great power comes great responsibility.<br/>
-          — Team AvengerNexus 🛡️
+          — Team AvengerNexus
         </p>
       </div>
     `,
@@ -48,9 +47,8 @@ async function sendEmail(to, title, description) {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; background-color: #0c0c0c; color: #ffffff;">
         <div style="text-align: center; padding-bottom: 20px;">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/f/f9/Avengers_Logo_2012.svg" alt="Avengers Nexus" style="height: 60px;" />
         </div>
-        <h2 style="text-align: center; color: #00ffff;">Important Update from Avengers Nexus</h2>
+        <h2 style="text-align: center; color: #ffffff;">Important Update from Avengers Nexus</h2>
         <h3 style="text-align: center; color: #ffffff;">${title}</h3>
         <p style="font-size: 16px; color: #dddddd; text-align: center;">
           ${description}

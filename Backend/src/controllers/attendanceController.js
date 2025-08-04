@@ -3,11 +3,9 @@ const User = require('../models/user');
 const redisClient = require('../config/redish');
 const { v4: uuidv4 } = require('uuid');
 const generateOtp = require('../utils/generateOtp');
-const { io } = require('../socket/attendanceSocket');
 
 // START ATTENDANCE (ADMIN)
-// START ATTENDANCE (ADMIN)
-const startAttendance = async (io, adminId) => {  
+const startAttendance = async (io, adminId) => {
   try {
     const otp = generateOtp();
     const sessionId = uuidv4();
@@ -23,7 +21,7 @@ const startAttendance = async (io, adminId) => {
     io.emit('attendance-started', {
       otp,
       sessionId,
-      expiresIn: expiry
+      expiresIn: expiry,
     });
 
     // Schedule marking absentees and cleanup
@@ -60,8 +58,7 @@ const submitOtp = async (userId, enteredOtp, sessionId, io) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const user = await User.findById(userId); // ✅ make sure this is populated
-
+    const user = await User.findById(userId);
     if (!user) return { success: false, message: 'User not found' };
 
     const existing = await Attendance.findOne({ user: userId, date: today });
@@ -72,13 +69,11 @@ const submitOtp = async (userId, enteredOtp, sessionId, io) => {
         existing.otpSessionId = sessionId;
         await existing.save();
 
-      io.to(sessionId).emit('user-attended', {
-        userId: user._id,
-        name: user.firstName,
-        email: user.emailId,
-      });
-
-
+        io.to(sessionId).emit('user-attended', {
+          userId: user._id,
+          name: user.firstName,
+          email: user.emailId,
+        });
 
         return { success: true, message: 'Marked present (updated from Absent)' };
       }
@@ -105,8 +100,6 @@ const submitOtp = async (userId, enteredOtp, sessionId, io) => {
   }
 };
 
-
-
 // MARK ABSENT FOR ALL (after timeout)
 const markAbsentForAll = async (sessionId) => {
   try {
@@ -114,40 +107,40 @@ const markAbsentForAll = async (sessionId) => {
     today.setHours(0, 0, 0, 0);
 
     // Find users who haven't submitted OTP for this session
-    const presentUsers = await Attendance.find({ 
-      otpSessionId: sessionId, 
+    const presentUsers = await Attendance.find({
+      otpSessionId: sessionId,
       date: today,
-      status: 'Present'
-    }).distinct('user'); // Get IDs of users marked present
+      status: 'Present',
+    }).distinct('user');
 
     // Find all users with role 'user' who aren't marked present
-    const usersToMarkAbsent = await User.find({ 
+    const usersToMarkAbsent = await User.find({
       role: 'user',
-      _id: { $nin: presentUsers } // Exclude users already marked present
+      _id: { $nin: presentUsers },
     });
 
     // Mark absent for users without an attendance record for today
     const attendancePromises = usersToMarkAbsent.map(async (user) => {
-      const alreadyMarked = await Attendance.findOne({ 
-        user: user._id, 
-        date: today 
+      const alreadyMarked = await Attendance.findOne({
+        user: user._id,
+        date: today,
       });
       if (!alreadyMarked) {
         return Attendance.create({
           user: user._id,
           date: today,
           status: 'Absent',
-          otpSessionId: sessionId
+          otpSessionId: sessionId,
         });
       }
     });
 
-    await Promise.all(attendancePromises.filter(Boolean)); // Execute only valid promises
+    await Promise.all(attendancePromises.filter(Boolean));
 
     console.log(`✅ Marked absentees for session ${sessionId}`);
   } catch (error) {
     console.error('❌ Error in markAbsentForAll:', error);
-    throw error; // Rethrow to allow caller to handle
+    throw error;
   }
 };
 
@@ -167,10 +160,114 @@ const checkactive = async (req, res) => {
   }
 };
 
+// GET ATTENDANCE BY DATE
+const getAttendanceByDate = async (req, res) => {
+  try {
+    const inputDate = new Date(req.params.date);
+
+    const adjustedDate = new Date(inputDate);
+    adjustedDate.setDate(adjustedDate.getDate() - 1);
+
+    const startOfDay = new Date(adjustedDate.setUTCHours(0, 0, 0, 0));
+    const endOfDay = new Date(adjustedDate.setUTCHours(23, 59, 59, 999));
+
+    const attendance = await Attendance.find({
+      date: { $gte: startOfDay, $lte: endOfDay },
+    }).populate('user', 'firstName emailId');
+
+    res.status(200).json({
+      success: true,
+      date: req.params.date,
+      attendance,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: err.message,
+    });
+  }
+};
+
+// GET ATTENDANCE BY USER ID
+const getAttendanceByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (req.user._id.toString() !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
+    const attendance = await Attendance.find({ user: userId }).sort({ date: -1 });
+    res.status(200).json({ success: true, userId, attendance });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error', error: err.message });
+  }
+};
+
+// GET MONTHLY SUMMARY
+const getMonthlySummary = async (req, res) => {
+  const { month, year } = req.query;
+
+  if (!month || !year) {
+    return res.status(400).json({ message: 'Month and year are required' });
+  }
+
+  const monthNum = parseInt(month);
+  const yearNum = parseInt(year);
+
+  const startDate = new Date(yearNum, monthNum - 1, 1);
+  const endDate = new Date(yearNum, monthNum, 1);
+
+  try {
+    const summary = await Attendance.aggregate([
+      {
+        $match: {
+          date: { $gte: startDate, $lt: endDate },
+          status: 'Present',
+        },
+      },
+      {
+        $group: {
+          _id: '$user',
+          daysPresent: { $sum: 1 },
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'userDetails',
+        },
+      },
+      {
+        $unwind: '$userDetails',
+      },
+      {
+        $project: {
+          _id: 0,
+          userName: {
+            $concat: ['$userDetails.firstName', ' ', '$userDetails.lastName'],
+          },
+          daysPresent: 1,
+        },
+      },
+    ]);
+
+    res.json({ summary });
+  } catch (err) {
+    console.error('Error getting monthly summary:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
 
 module.exports = {
   startAttendance,
   submitOtp,
   markAbsentForAll,
-  checkactive
+  checkactive,
+  getAttendanceByDate,
+  getAttendanceByUserId,
+  getMonthlySummary,
 };

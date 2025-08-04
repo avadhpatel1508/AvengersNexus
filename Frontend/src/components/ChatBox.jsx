@@ -109,8 +109,8 @@ const ChatBox = ({ selectedChat, user, setIsSidebarOpen }) => {
 
   return (
     <motion.div
-      className="w-full flex flex-col bg-gradient-to-br from-slate-800/60 via-black to-slate-800/60 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl relative overflow-hidden"
-      style={{ height: 'calc(100vh - 120px)', overflow: 'auto' }}
+      className="w-full flex flex-col bg-gradient-to-br from-slate-800/60 via-black to-slate-800/60 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl relative overflow-x-hidden"
+      style={{ height: 'calc(100vh - 120px)', boxSizing: 'border-box' }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6 }}
@@ -156,7 +156,7 @@ const ChatBox = ({ selectedChat, user, setIsSidebarOpen }) => {
         {!selectedChat ? (
           <motion.div
             className="flex items-center justify-center text-gray-400 text-lg bg-gradient-to-br from-slate-800/60 to-slate-900/60 rounded-3xl border border-white/20"
-            style={{ height: 'calc(100vh - 120px - 70px)' }}
+            style={{ height: 'calc(100vh - 120px - 70px)', width: '100%' }}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
@@ -166,18 +166,18 @@ const ChatBox = ({ selectedChat, user, setIsSidebarOpen }) => {
         ) : (
           <>
             {/* Chat Header */}
-            <div className="sticky top-0 z-10 bg-gradient-to-r from-slate-800/80 to-slate-900/80 backdrop-blur-xl p-4 border-b border-white/20 flex items-center gap-4 h-[60px] shadow-2xl">
+            <div className="sticky top-0 z-10 bg-gradient-to-r from-slate-800/80 to-slate-900/80 backdrop-blur-xl p-4 border-b border-white/20 flex items-center gap-4 h-[60px] shadow-2xl w-full box-border">
               <button
                 className="md:hidden text-white p-2 hover:bg-slate-700/80 rounded-full transition"
                 onClick={() => setIsSidebarOpen(true)}
               >
                 <ArrowLeft size={24} />
               </button>
-              <div>
-                <div className="font-semibold text-lg bg-gradient-to-r from-red-500 via-white to-blue-500 bg-clip-text text-transparent">
+              <div className="flex-1 overflow-hidden">
+                <div className="font-semibold text-lg bg-gradient-to-r from-red-500 via-white to-blue-500 bg-clip-text text-transparent truncate">
                   {selectedChat.groupName}
                 </div>
-                <div className="text-sm text-gray-400">
+                <div className="text-sm text-gray-400 truncate">
                   {selectedChat.mission?.Location || 'No location'}
                 </div>
               </div>
@@ -185,9 +185,9 @@ const ChatBox = ({ selectedChat, user, setIsSidebarOpen }) => {
 
             {/* Messages */}
             <div
-              className="overflow-y-auto p-6 space-y-4 bg-transparent"
+              className="overflow-y-auto p-4 sm:p-6 space-y-4 bg-transparent w-full box-border"
               ref={chatContainerRef}
-              style={{ height: 'calc(100vh - 120px - 130px)', maxHeight: 'calc(100vh - 120px - 130px)' }}
+              style={{ height: 'calc(100vh - 120px - 130px)', maxHeight: 'calc(100vh - 120px - 130px)', overflowX: 'hidden' }}
             >
               <AnimatePresence>
                 {messages.map((msg, index) => {
@@ -207,7 +207,7 @@ const ChatBox = ({ selectedChat, user, setIsSidebarOpen }) => {
                           : 'mr-auto bg-gradient-to-br from-slate-700/80 to-slate-800/80 text-white'
                       }`}
                       style={{
-                        maxWidth: isShortMessage ? 'min(40%, 250px)' : 'min(70%, 400px)',
+                        maxWidth: isShortMessage ? 'min(40%, 250px)' : 'min(90%, 400px)', // Adjusted maxWidth for mobile
                         width: 'fit-content',
                         transformStyle: 'preserve-3d',
                       }}
@@ -234,7 +234,7 @@ const ChatBox = ({ selectedChat, user, setIsSidebarOpen }) => {
 
             {/* Input Area */}
             <motion.div
-              className="p-4 bg-gradient-to-r from-slate-800/80 to-slate-900/80 backdrop-blur-xl border-t border-white/20 flex gap-4 items-center"
+              className="p-4 bg-gradient-to-r from-slate-800/80 to-slate-900/80 backdrop-blur-xl border-t border-white/20 flex gap-4 items-center w-full box-border"
               style={{ minHeight: '70px', paddingBottom: 'max(env(safe-area-inset-bottom, 15px), 15px)' }}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -244,7 +244,7 @@ const ChatBox = ({ selectedChat, user, setIsSidebarOpen }) => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Type a message..."
-                className="flex-1 px-4 py-3 rounded-full bg-slate-900/80 text-white placeholder-gray-400 border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+                className="flex-1 px-4 py-3 rounded-full bg-slate-900/80 text-white placeholder-gray-400 border border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base w-full box-border"
                 style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 10px), 10px)' }}
               />
               <motion.button
@@ -284,6 +284,21 @@ const ChatBox = ({ selectedChat, user, setIsSidebarOpen }) => {
         }
         .perspective-1000 {
           perspective: 1000px;
+        }
+        body {
+          overflow-x: hidden;
+        }
+        @media (max-width: 768px) {
+          .chatbox-container {
+            width: 100vw !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow-x: hidden !important;
+          }
+          .chatbox-container > * {
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+          }
         }
       `}</style>
     </motion.div>

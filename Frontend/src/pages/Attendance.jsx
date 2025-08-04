@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-import axiosClient from '../utils/axiosClient'; // Import axiosClient
+import axiosClient from '../utils/axiosClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaCalendarAlt } from 'react-icons/fa';
 import AdminNavbar from '../components/AdminNavbar';
@@ -69,7 +69,7 @@ const Attendance = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await axiosClient.get(`/attendance/date/${formattedDate}`); // Use axiosClient
+      const response = await axiosClient.get(`/attendance/date/${formattedDate}`);
       const data = Array.isArray(response.data.attendance) ? response.data.attendance : [];
       setAttendanceData(data);
     } catch (err) {
@@ -85,8 +85,8 @@ const Attendance = () => {
     try {
       const response = await axiosClient.get(
         `/attendance/daily-counts?month=${month + 1}&year=${year}`
-      ); // Use axiosClient
-      console.log('Daily Counts API Response:', response.data); // Debug log
+      );
+      console.log('Daily Counts API Response:', response.data);
       const data = Array.isArray(response.data) ? response.data : [];
       setDailyCounts(data);
     } catch (err) {
@@ -104,8 +104,8 @@ const Attendance = () => {
       try {
         const res = await axiosClient.get(
           `/attendance/monthly-summary?month=${month + 1}&year=${year}`
-        ); // Use axiosClient
-        console.log('Monthly Data API Response:', res.data); // Debug log
+        );
+        console.log('Monthly Data API Response:', res.data);
         const data = Array.isArray(res.data.summary) ? res.data.summary : [];
         setMonthlyData(data);
       } catch (err) {
@@ -160,10 +160,16 @@ const Attendance = () => {
     [attendanceData]
   );
 
-  console.log('Pie Data:', pieData);
+  // Dynamic chart margins based on screen size
+  const chartMargins = {
+    top: 20,
+    right: window.innerWidth <= 640 ? 10 : 30,
+    left: window.innerWidth <= 640 ? 0 : 20,
+    bottom: 5,
+  };
 
   return (
-    <div className="bg-black text-white relative overflow-hidden">
+    <div className="bg-black text-white relative overflow-x-hidden">
       {/* Preloader */}
       <AnimatePresence>
         {(!isLoaded || graphLoading || loading) && (
@@ -231,7 +237,7 @@ const Attendance = () => {
 
       {user?.role === 'admin' ? <AdminNavbar /> : <UserNavbar />}
 
-      <div className="relative z-10 p-8 py-16 px-4 sm:px-6 min-h-[120vh]">
+      <div className="relative z-10 p-4 sm:p-8 py-16 min-h-[120vh] w-full box-border overflow-x-hidden">
         <motion.div
           className="flex justify-center gap-6 mb-8"
           variants={containerVariants}
@@ -280,13 +286,13 @@ const Attendance = () => {
 
         {viewMode === 'calendar' && (
           <motion.div
-            className="max-w-4xl mx-auto"
+            className="w-full mx-auto"
             variants={containerVariants}
             initial="hidden"
             animate={isLoaded ? 'visible' : 'hidden'}
           >
             <motion.div
-              className="flex justify-center gap-4 mb-6"
+              className="flex justify-center gap-4 mb-6 flex-wrap"
               variants={itemVariants}
             >
               <motion.button
@@ -312,7 +318,7 @@ const Attendance = () => {
                 className="flex justify-center mb-6"
                 variants={itemVariants}
               >
-                <div className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-6 border border-white/20 shadow-2xl perspective-1000">
+                <div className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-6 border border-white/20 shadow-2xl perspective-1000 w-full max-w-md">
                   <motion.div
                     className="relative"
                     whileHover={{ rotateY: 5, rotateX: 2 }}
@@ -321,7 +327,7 @@ const Attendance = () => {
                     <Calendar
                       onChange={setSelectedDate}
                       value={selectedDate}
-                      className="rounded-lg p-4 bg-white text-black"
+                      className="rounded-lg p-4 bg-white text-black w-full"
                     />
                   </motion.div>
                 </div>
@@ -358,7 +364,7 @@ const Attendance = () => {
               </motion.p>
             ) : (
               <motion.ul
-                className="space-y-4"
+                className="space-y-4 w-full"
                 variants={containerVariants}
               >
                 {attendanceData.map((entry) => (
@@ -367,7 +373,7 @@ const Attendance = () => {
                     className="flex justify-between items-center bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl p-4 rounded-xl border border-white/20 hover:scale-[1.02] transition-transform"
                     variants={itemVariants}
                   >
-                    <span className="font-semibold text-white">
+                    <span className="font-semibold text-white truncate">
                       {entry.user?.firstName || 'Unknown'} ({entry.user?.emailId})
                     </span>
                     <span
@@ -386,20 +392,20 @@ const Attendance = () => {
 
         {viewMode === 'graph' && (
           <motion.div
-            className="max-w-4xl mx-auto"
+            className="w-full mx-auto"
             variants={containerVariants}
             initial="hidden"
             animate={isLoaded ? 'visible' : 'hidden'}
           >
             <motion.div
-              className="flex justify-center gap-4 mb-8"
+              className="flex justify-center gap-4 mb-8 flex-wrap"
               variants={itemVariants}
             >
               <div className="relative">
                 <motion.select
                   value={month}
                   onChange={(e) => setMonth(parseInt(e.target.value))}
-                  className="appearance-none px-6 py-3 bg-gray-800 text-gray-200 font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="appearance-none px-6 py-3 bg-gray-800 text-gray-200 font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full max-w-xs"
                   whileHover={{ scale: 1.05 }}
                 >
                   {Array.from({ length: 12 }, (_, i) => (
@@ -425,7 +431,7 @@ const Attendance = () => {
 
             {monthlyData.length > 0 ? (
               <motion.div
-                className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-6 border border-white/20 shadow-2xl perspective-1000 mb-8"
+                className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-4 sm:p-6 border border-white/20 shadow-2xl perspective-1000 mb-8 w-full box-border"
                 whileHover={{ rotateY: 5, rotateX: 2 }}
                 style={{ transformStyle: 'preserve-3d' }}
                 variants={itemVariants}
@@ -434,16 +440,17 @@ const Attendance = () => {
                 <ResponsiveContainer width="100%" height={400}>
                   <BarChart
                     data={monthlyData}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                    margin={chartMargins}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.2)" />
-                    <XAxis dataKey="userName" stroke="#ffffff" />
-                    <YAxis stroke="#ffffff" />
+                    <XAxis dataKey="userName" stroke="#ffffff" tick={{ fontSize: window.innerWidth <= 640 ? 10 : 12 }} />
+                    <YAxis stroke="#ffffff" tick={{ fontSize: window.innerWidth <= 640 ? 10 : 12 }} />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: 'rgba(0,0,0,0.8)',
                         border: '1px solid rgba(255,255,255,0.2)',
                         borderRadius: '8px',
+                        fontSize: window.innerWidth <= 640 ? 12 : 14,
                       }}
                     />
                     <Bar dataKey="daysPresent" fill="#3b82f6" />
@@ -461,7 +468,7 @@ const Attendance = () => {
 
             {dailyCounts.length > 0 ? (
               <motion.div
-                className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-6 border border-white/20 shadow-2xl perspective-1000 mb-8"
+                className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-4 sm:p-6 border border-white/20 shadow-2xl perspective-1000 mb-8 w-full box-border"
                 whileHover={{ rotateY: 5, rotateX: 2 }}
                 style={{ transformStyle: 'preserve-3d' }}
                 variants={itemVariants}
@@ -470,20 +477,22 @@ const Attendance = () => {
                 <ResponsiveContainer width="100%" height={400}>
                   <LineChart
                     data={dailyCounts}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                    margin={chartMargins}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.2)" />
                     <XAxis
                       dataKey="date"
                       tickFormatter={(date) => date.split('-')[2]}
                       stroke="#ffffff"
+                      tick={{ fontSize: window.innerWidth <= 640 ? 10 : 12 }}
                     />
-                    <YAxis stroke="#ffffff" />
+                    <YAxis stroke="#ffffff" tick={{ fontSize: window.innerWidth <= 640 ? 10 : 12 }} />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: 'rgba(0,0,0,0.8)',
                         border: '1px solid rgba(255,255,255,0.2)',
                         borderRadius: '8px',
+                        fontSize: window.innerWidth <= 640 ? 12 : 14,
                       }}
                     />
                     <Line
@@ -507,7 +516,7 @@ const Attendance = () => {
 
             {pieData.length > 0 ? (
               <motion.div
-                className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-6 border border-white/20 shadow-2xl perspective-1000"
+                className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-4 sm:p-6 border border-white/20 shadow-2xl perspective-1000 w-full box-border"
                 whileHover={{ rotateY: 5, rotateX: 2 }}
                 style={{ transformStyle: 'preserve-3d' }}
                 variants={itemVariants}
@@ -515,16 +524,16 @@ const Attendance = () => {
                 <h3 className="text-center text-white text-lg mb-4">
                   Attendance Status for {selectedDate.toDateString()}
                 </h3>
-                <ResponsiveContainer width="100%" height={400}>
-                  <PieChart>
+                <ResponsiveContainer width="100%" height={window.innerWidth <= 640 ? 300 : 400}>
+                  <PieChart margin={chartMargins}>
                     <Pie
                       data={pieData}
                       dataKey="value"
                       nameKey="name"
                       cx="50%"
                       cy="50%"
-                      outerRadius={150}
-                      label
+                      outerRadius={window.innerWidth <= 640 ? 100 : 150}
+                      label={{ fontSize: window.innerWidth <= 640 ? 10 : 12 }}
                     >
                       <Cell fill="#3b82f6" />
                       <Cell fill="#ef4444" />
@@ -534,16 +543,18 @@ const Attendance = () => {
                         backgroundColor: 'rgba(0,0,0,0.8)',
                         border: '1px solid rgba(255,255,255,0.2)',
                         borderRadius: '8px',
+                        fontSize: window.innerWidth <= 640 ? 12 : 14,
                       }}
                     />
                     <Legend
-                      align="right"
-                      verticalAlign="top"
-                      layout="vertical"
+                      align="center"
+                      verticalAlign="bottom"
+                      layout="horizontal"
                       wrapperStyle={{
                         padding: '10px',
                         backgroundColor: 'rgba(0,0,0,0.5)',
                         borderRadius: '4px',
+                        fontSize: window.innerWidth <= 640 ? 12 : 14,
                       }}
                     />
                   </PieChart>
@@ -577,6 +588,26 @@ const Attendance = () => {
         }
         .perspective-1000 {
           perspective: 1000px;
+        }
+        body {
+          overflow-x: hidden;
+        }
+        @media (max-width: 640px) {
+          .chart-container {
+            width: 100% !important;
+            overflow-x: hidden !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .chart-container > * {
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          .recharts-wrapper,
+          .recharts-surface {
+            width: 100% !important;
+            overflow: hidden !important;
+          }
         }
       `}</style>
 
