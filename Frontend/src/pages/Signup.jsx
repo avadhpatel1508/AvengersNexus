@@ -1,17 +1,18 @@
+
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, NavLink } from 'react-router'; // Fixed typo: 'react-router' to 'react-router-dom'
+import { useNavigate, NavLink } from 'react-router';
 import { registerUser } from '../authSlice';
 import axiosClient from '../utils/axiosClient';
 
 const signupSchema = z.object({
-  firstName: z.string().min(3, "First name must be at least 3 characters"),
-  emailId: z.string().email("Please enter a valid email address"),
-  passWord: z.string().min(8, "Password must be at least 8 characters long"),
+  firstName: z.string().min(3, 'First name must be at least 3 characters'),
+  emailId: z.string().email('Please enter a valid email address'),
+  passWord: z.string().min(8, 'Password must be at least 8 characters long'),
 });
 
 function Signup() {
@@ -20,10 +21,17 @@ function Signup() {
   const [otp, setOtp] = useState(['', '', '', '']);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [otpMessage, setOtpMessage] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isLoaded, setIsLoaded] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0); // Cooldown timer state
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [passwordValidation, setPasswordValidation] = useState({
+    length: false,
+    uppercase: false,
+    special: false,
+  });
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -37,6 +45,24 @@ function Signup() {
   } = useForm({ resolver: zodResolver(signupSchema) });
 
   const emailValue = watch('emailId');
+  const passWordValue = watch('passWord');
+
+  // Real-time password validation
+  useEffect(() => {
+    if (passWordValue) {
+      setPasswordValidation({
+        length: passWordValue.length >= 8,
+        uppercase: /[A-Z]/.test(passWordValue),
+        special: /[!@#$%^&*(),.?":{}|<>]/.test(passWordValue),
+      });
+    } else {
+      setPasswordValidation({
+        length: false,
+        uppercase: false,
+        special: false,
+      });
+    }
+  }, [passWordValue]);
 
   useEffect(() => {
     setIsLoaded(true);
@@ -50,7 +76,6 @@ function Signup() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, [isAuthenticated, navigate]);
 
-  // Handle cooldown timer
   useEffect(() => {
     let timer;
     if (resendCooldown > 0) {
@@ -61,27 +86,43 @@ function Signup() {
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
-  const onSubmit = async (data) => {
-    if (!isEmailVerified) {
-      setOtpMessage('Please verify your email before signing up.');
-      return;
-    }
+  const onSubmit = async (data, event) => {
+    event.preventDefault();
+    console.log('onSubmit triggered with data:', data);
+    setErrorMessage('');
     try {
+      if (!isEmailVerified) {
+        setErrorMessage('Please verify your email before signing up.');
+        console.log('Error: Email not verified');
+        return;
+      }
+      if (!passwordValidation.length || !passwordValidation.uppercase || !passwordValidation.special) {
+        const failedRequirements = [];
+        if (!passwordValidation.length) failedRequirements.push('min length 8');
+        if (!passwordValidation.uppercase) failedRequirements.push('uppercase letter');
+        if (!passwordValidation.special) failedRequirements.push('special character');
+        setErrorMessage(`Password must include: ${failedRequirements.join(', ')}.`);
+        console.log('Error: Password validation failed:', passwordValidation);
+        return;
+      }
       const resultAction = await dispatch(registerUser(data));
       if (registerUser.fulfilled.match(resultAction)) {
-        alert("✅ Account created successfully!");
+        console.log('Registration successful:', resultAction.payload);
+        alert('✅ Account created successfully!');
         navigate('/login');
       } else {
-        const errMsg = resultAction.payload?.message || "Signup failed.";
-        if (errMsg.includes('exists')) {
-          setOtpMessage('❌ This email is already registered. Please use a different email.');
-        } else {
-          setOtpMessage(`❌ ${errMsg}`);
+        const errMsg = resultAction.payload?.message || 'Signup failed.';
+        console.log('Registration failed with message:', errMsg);
+        setErrorMessage(errMsg);
+        if (errMsg.includes('Email is already registered')) {
+          setEmailError(errMsg);
         }
       }
     } catch (err) {
-      console.error("Signup error:", err);
-      setOtpMessage("❌ An unexpected error occurred. Please try again.");
+      console.error('Signup error:', err);
+      const errMsg = err.message || 'An unexpected error occurred. Please try again.';
+      console.log('Caught error message:', errMsg);
+      setErrorMessage(errMsg);
     }
   };
 
@@ -92,7 +133,7 @@ function Signup() {
     }
     try {
       if (!emailValue) {
-        setOtpMessage("Please enter a valid email first.");
+        setEmailError('Please enter a valid email first.');
         return;
       }
       const normalizedEmail = emailValue.trim().toLowerCase();
@@ -101,14 +142,16 @@ function Signup() {
         setOtpSent(true);
         setOtp(['', '', '', '']);
         setOtpMessage('✅ OTP sent to your email! Please check your inbox.');
-        setResendCooldown(30); // Set 30-second cooldown
+        setEmailError('');
+        setResendCooldown(30);
       }
     } catch (err) {
-      console.error("Send OTP failed:", err);
-      if (err.response?.data?.message?.includes('exists')) {
-        setOtpMessage('❌ This email is already registered. Please use a different email.');
+      console.error('Send OTP failed:', err);
+      const errMsg = err.response?.data?.message || 'Failed to send OTP. Please try again.';
+      if (errMsg.includes('exists') || errMsg.includes('Email is already registered')) {
+        setEmailError('❌ This email is already registered. Please use a different email.');
       } else {
-        setOtpMessage('❌ Failed to send OTP. Please try again.');
+        setOtpMessage(errMsg);
       }
     }
   };
@@ -130,7 +173,7 @@ function Signup() {
   const verifyOtp = async () => {
     const fullOtp = otp.join('');
     if (fullOtp.length !== 4) {
-      setOtpMessage("Please enter all 4 digits of the OTP.");
+      setOtpMessage('Please enter all 4 digits of the OTP.');
       return;
     }
     try {
@@ -142,13 +185,13 @@ function Signup() {
       });
       if (res.data.verified) {
         setIsEmailVerified(true);
-        setOtpMessage("✅ Email verified successfully!");
+        setOtpMessage('✅ Email verified successfully!');
       } else {
-        setOtpMessage("❌ Invalid OTP. Please try again.");
+        setOtpMessage('❌ Invalid OTP. Please try again.');
       }
     } catch (err) {
-      console.error("OTP Verification Error:", err);
-      setOtpMessage("❌ OTP verification failed. Please try again.");
+      console.error('OTP Verification Error:', err);
+      setOtpMessage('❌ OTP verification failed. Please try again.');
     } finally {
       setVerifyingOtp(false);
     }
@@ -156,32 +199,18 @@ function Signup() {
 
   const containerVariants = {
     hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.3,
-      },
-    },
+    visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.3 } },
   };
 
   const itemVariants = {
     hidden: { y: 30, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        duration: 0.8,
-        ease: "easeOut",
-      },
-    },
+    visible: { y: 0, opacity: 1, transition: { duration: 0.8, ease: 'easeOut' } },
   };
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
-      {/* Background */}
       <div className="fixed inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-black to-blue-950"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-black to-blue-950" />
         <div className="absolute inset-0 opacity-20">
           <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
             <defs>
@@ -199,9 +228,9 @@ function Signup() {
           </svg>
         </div>
         <div className="absolute inset-0">
-          <div className="absolute top-0 left-1/4 w-1 h-full bg-gradient-to-b from-red-500/30 via-transparent to-transparent transform rotate-12 animate-pulse"></div>
-          <div className="absolute top-0 right-1/3 w-1 h-full bg-gradient-to-b from-blue-500/30 via-transparent to-transparent transform -rotate-12 animate-pulse delay-1000"></div>
-          <div className="absolute top-0 left-2/3 w-1 h-full bg-gradient-to-b from-white/20 via-transparent to-transparent transform rotate-6 animate-pulse delay-2000"></div>
+          <div className="absolute top-0 left-1/4 w-1 h-full bg-gradient-to-b from-red-500/30 via-transparent to-transparent transform rotate-12 animate-pulse" />
+          <div className="absolute top-0 right-1/3 w-1 h-full bg-gradient-to-b from-blue-500/30 via-transparent to-transparent transform -rotate-12 animate-pulse delay-1000" />
+          <div className="absolute top-0 left-2/3 w-1 h-full bg-gradient-to-b from-white/20 via-transparent to-transparent transform rotate-6 animate-pulse delay-2000" />
         </div>
         <motion.div
           className="absolute w-96 h-96 rounded-full"
@@ -210,7 +239,7 @@ function Signup() {
             top: mousePosition.y - 192,
             background: 'radial-gradient(circle, rgba(220, 38, 38, 0.08) 0%, rgba(37, 99, 235, 0.06) 50%, transparent 70%)',
           }}
-          transition={{ type: "spring", stiffness: 20, damping: 30 }}
+          transition={{ type: 'spring', stiffness: 20, damping: 30 }}
         />
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-5">
           <div className="w-[60vw] max-w-[350px] h-[60vw] max-h-[350px] border-8 border-white rounded-full flex items-center justify-center animate-spin-very-slow">
@@ -224,12 +253,7 @@ function Signup() {
       </div>
 
       <div className="relative z-10 min-h-screen flex items-center justify-center py-10 px-4 sm:px-6">
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate={isLoaded ? "visible" : "hidden"}
-          className="w-full max-w-md"
-        >
+        <motion.div variants={containerVariants} initial="hidden" animate={isLoaded ? 'visible' : 'hidden'} className="w-full max-w-md">
           <div className="relative group perspective-1000">
             <motion.div
               className="absolute -inset-12 bg-gradient-to-r from-red-500 via-white to-blue-500 rounded-full blur-2xl opacity-10 group-hover:opacity-20 transition-opacity duration-1000"
@@ -239,26 +263,31 @@ function Signup() {
             <motion.div
               className="relative bg-gradient-to-br from-slate-800/80 via-slate-900/80 to-slate-800/80 backdrop-blur-2xl rounded-3xl p-6 sm:p-8 border border-white/30 shadow-2xl"
               whileHover={{ rotateY: 5, rotateX: 2 }}
-              style={{ transformStyle: "preserve-3d" }}
+              style={{ transformStyle: 'preserve-3d' }}
             >
               <motion.h2
                 variants={itemVariants}
                 className="text-3xl sm:text-4xl font-black text-center mb-8 bg-gradient-to-r from-red-500 via-white to-blue-500 bg-clip-text text-transparent"
-                whileHover={{ textShadow: "0 0 20px rgba(255,255,255,0.5)" }}
+                whileHover={{ textShadow: '0 0 20px rgba(255,255,255,0.5)' }}
               >
                 Join AvengersNexus
               </motion.h2>
 
-              <div className="space-y-6">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <motion.div variants={itemVariants} className="space-y-2">
                   <label className="text-gray-200 text-sm font-light">First Name</label>
                   <input
                     type="text"
                     placeholder="Steve"
                     {...register('firstName')}
-                    className={`w-full p-3 rounded-lg bg-black/70 text-white border ${errors.firstName ? 'border-red-500' : 'border-white/30'} focus:outline-none focus:border-cyan-400 transition-all duration-300`}
+                    className={`w-full p-3 rounded-lg bg-black/70 text-white border ${
+                      errors.firstName ? 'border-red-500' : 'border-white/30'
+                    } focus:outline-none focus:border-cyan-400 transition-all duration-300`}
                   />
                   {errors.firstName && <span className="text-red-400 text-sm">{errors.firstName.message}</span>}
+                  {errorMessage.includes('First name is already taken') && (
+                    <span className="text-red-400 text-sm">{errorMessage}</span>
+                  )}
                 </motion.div>
 
                 <motion.div variants={itemVariants} className="space-y-2">
@@ -269,25 +298,37 @@ function Signup() {
                       placeholder="tony@starkindustries.com"
                       {...register('emailId')}
                       disabled={isEmailVerified}
-                      className={`flex-1 p-3 rounded-lg bg-black/70 text-white border ${errors.emailId ? 'border-red-500' : 'border-white/30'} focus:outline-none focus:border-cyan-400 transition-all duration-300`}
+                      className={`flex-1 p-3 rounded-lg bg-black/70 text-white border ${
+                        errors.emailId || emailError ? 'border-red-500' : 'border-white/30'
+                      } focus:outline-none focus:border-cyan-400 transition-all duration-300`}
                     />
                     {!isEmailVerified && (
                       <motion.button
                         type="button"
                         onClick={sendOtp}
                         disabled={resendCooldown > 0 || isEmailVerified}
-                        className={`px-4 py-2 rounded-lg bg-gradient-to-r from-red-500 to-blue-500 text-white font-semibold ${resendCooldown > 0 || isEmailVerified ? 'opacity-50' : ''} shadow-lg`}
-                        whileHover={{ scale: 1.05, boxShadow: "0 0 15px rgba(255,255,255,0.3)" }}
+                        className={`px-4 py-2 rounded-lg bg-gradient-to-r from-red-500 to-blue-500 text-white font-semibold ${
+                          resendCooldown > 0 || isEmailVerified ? 'opacity-50' : ''
+                        } shadow-lg`}
+                        whileHover={{ scale: 1.05, boxShadow: '0 0 15px rgba(255,255,255,0.3)' }}
                         whileTap={{ scale: 0.95 }}
                       >
                         {otpSent && resendCooldown > 0 ? `Resend (${resendCooldown}s)` : otpSent ? 'Resend OTP' : 'Verify'}
                       </motion.button>
                     )}
-                    {isEmailVerified && (
-                      <span className="px-4 py-2 text-green-400 font-semibold">Verified</span>
-                    )}
+                    {isEmailVerified && <span className="px-4 py-2 text-green-400 font-semibold">Verified</span>}
                   </div>
                   {errors.emailId && <span className="text-red-400 text-sm">{errors.emailId.message}</span>}
+                  {emailError && (
+                    <motion.span
+                      className="text-red-400 text-sm"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      {emailError}
+                    </motion.span>
+                  )}
                 </motion.div>
 
                 {otpSent && !isEmailVerified && (
@@ -312,10 +353,10 @@ function Signup() {
                       onClick={verifyOtp}
                       disabled={verifyingOtp}
                       className="w-full p-3 rounded-lg bg-gradient-to-r from-green-500 to-green-700 text-white font-semibold disabled:opacity-50 shadow-lg"
-                      whileHover={{ scale: 1.05, boxShadow: "0 0 15px rgba(255,255,255,0.3)" }}
+                      whileHover={{ scale: 1.05, boxShadow: '0 0 15px rgba(255,255,255,0.3)' }}
                       whileTap={{ scale: 0.95 }}
                     >
-                      {verifyingOtp ? "Verifying..." : "Submit OTP"}
+                      {verifyingOtp ? 'Verifying...' : 'Submit OTP'}
                     </motion.button>
                     {otpMessage && (
                       <motion.p
@@ -334,10 +375,14 @@ function Signup() {
                   <label className="text-gray-200 text-sm font-light">Password</label>
                   <div className="relative">
                     <input
-                      type={showpassWord ? "text" : "password"}
+                      type={showpassWord ? 'text' : 'password'}
                       placeholder="••••••••"
                       {...register('passWord')}
-                      className={`w-full p-3 rounded-lg bg-black/70 text-white border ${errors.passWord ? 'border-red-500' : 'border-white/30'} focus:outline-none focus:border-cyan-400 transition-all duration-300`}
+                      className={`w-full p-3 rounded-lg bg-black/70 text-white border ${
+                        errors.passWord || errorMessage.includes('Password') || !passwordValidation.length || !passwordValidation.uppercase || !passwordValidation.special
+                          ? 'border-red-500'
+                          : 'border-white/30'
+                      } focus:outline-none focus:border-cyan-400 transition-all duration-300`}
                     />
                     <button
                       type="button"
@@ -346,26 +391,71 @@ function Signup() {
                     >
                       {showpassWord ? (
                         <svg className="h-5 w-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                            d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411L21 21" />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411L21 21"
+                          />
                         </svg>
                       ) : (
                         <svg className="h-5 w-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542-7z" />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7-4.478 0-8.268-2.943-9.542-7z"
+                          />
                         </svg>
                       )}
                     </button>
                   </div>
                   {errors.passWord && <span className="text-red-400 text-sm">{errors.passWord.message}</span>}
+                  {errorMessage.includes('Password') && (
+                    <motion.span
+                      className="text-red-400 text-sm"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      {errorMessage}
+                    </motion.span>
+                  )}
+                  <div className="text-sm text-gray-200 mt-2">
+                    <p>Enter a password with min length 8, special character, and uppercase letter:</p>
+                    <ul className="list-disc pl-5">
+                      <li className={passwordValidation.length ? 'text-green-400' : 'text-red-400'}>
+                        Minimum 8 characters: {passwordValidation.length ? '✔' : '✘'}
+                      </li>
+                      <li className={passwordValidation.uppercase ? 'text-green-400' : 'text-red-400'}>
+                        One uppercase letter: {passwordValidation.uppercase ? '✔' : '✘'}
+                      </li>
+                      <li className={passwordValidation.special ? 'text-green-400' : 'text-red-400'}>
+                        One special character (!@#$%^&amp;*,.-): {passwordValidation.special ? '✔' : '✘'}
+                      </li>
+                    </ul>
+                  </div>
                 </motion.div>
+
+                {errorMessage && !errorMessage.includes('First name') && !errorMessage.includes('Email') && !errorMessage.includes('Password') && (
+                  <motion.p
+                    className="text-red-400 text-sm text-center"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    {errorMessage}
+                  </motion.p>
+                )}
 
                 <motion.button
                   type="submit"
-                  onClick={handleSubmit(onSubmit)}
-                  className={`w-full p-3 rounded-lg bg-gradient-to-r from-red-500 to-blue-500 text-white font-semibold ${loading ? 'opacity-50' : ''} shadow-lg`}
-                  disabled={loading}
-                  whileHover={{ scale: 1.05, boxShadow: "0 0 15px rgba(255,255,255,0.3)" }}
+                  className={`w-full p-3 rounded-lg bg-gradient-to-r from-red-500 to-blue-500 text-white font-semibold ${
+                    loading || !passwordValidation.length || !passwordValidation.uppercase || !passwordValidation.special ? 'opacity-50' : ''
+                  } shadow-lg`}
+                  disabled={loading || !passwordValidation.length || !passwordValidation.uppercase || !passwordValidation.special}
+                  whileHover={{ scale: 1.05, boxShadow: '0 0 15px rgba(255,255,255,0.3)' }}
                   whileTap={{ scale: 0.95 }}
                   variants={itemVariants}
                 >
@@ -373,12 +463,9 @@ function Signup() {
                 </motion.button>
 
                 <motion.p variants={itemVariants} className="text-sm text-center text-gray-200">
-                  Already have an account?{' '}
-                  <NavLink to="/login" className="text-cyan-400 hover:underline font-medium">
-                    Login
-                  </NavLink>
+                  Already have an account? <NavLink to="/login" className="text-cyan-400 hover:underline font-medium">Login</NavLink>
                 </motion.p>
-              </div>
+              </form>
             </motion.div>
           </div>
         </motion.div>
@@ -386,8 +473,12 @@ function Signup() {
 
       <style jsx>{`
         @keyframes spin-very-slow {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
         }
         .animate-spin-very-slow {
           animation: spin-very-slow 60s linear infinite;

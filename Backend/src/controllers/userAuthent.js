@@ -65,27 +65,40 @@ const VerifyOtpSignup = async (req, res) => {
 
 const register = async (req, res) => {
   const { firstName, emailId, passWord } = req.body;
-
-  // Normalize email (to handle case-insensitive duplicates)
   const normalizedEmail = emailId.trim().toLowerCase();
 
   try {
-    // ✅ 1. Check if email is verified via OTP (from Redis)
+    // 1. Check OTP verification
     const isVerified = await redisClient.get(`verified:${normalizedEmail}`);
     if (isVerified !== "true") {
       return res.status(400).json({ message: "❌ Please verify OTP before registering." });
     }
 
-    // ✅ 2. Check if user already exists (to avoid duplicates)
-    const existingUser = await User.findOne({ emailId: normalizedEmail });
-    if (existingUser) {
+    // 2. Check if email already exists
+    const existingEmail = await User.findOne({ emailId: normalizedEmail });
+    if (existingEmail) {
       return res.status(400).json({ message: "❌ Email is already registered." });
     }
 
-    // ✅ 3. Hash password before storing
-    const hashedPassword = await bcrypt.hash(passWord, 10);
+    // 3. Check if first name is already used (optional, based on your logic)
+    const existingFirstName = await User.findOne({ firstName });
+    if (existingFirstName) {
+      return res.status(400).json({ message: "❌ First name is already taken." });
+    }
 
-    // ✅ 4. Create new user
+    // 4. Password strength validation
+    const weakPassword = passWord.length < 8 || 
+                        !/[A-Z]/.test(passWord) || 
+                        !/[0-9]/.test(passWord) || 
+                        !/[!@#$%^&*(),.?":{}|<>]/.test(passWord); // Added special character check
+    if (weakPassword) {
+      return res.status(400).json({ 
+        message: "❌ Password is too weak. Use at least 8 characters, one uppercase letter, one number, and one special character (!@#$%^&*(),.?\":{}|<>)." 
+      });
+    }
+
+    // 5. Hash password and save user
+    const hashedPassword = await bcrypt.hash(passWord, 10);
     const newUser = new User({
       firstName,
       emailId: normalizedEmail,
@@ -94,7 +107,7 @@ const register = async (req, res) => {
 
     await newUser.save();
 
-    // ✅ 5. Clear Redis verification after successful signup
+    // 6. Clear OTP verification key
     await redisClient.del(`verified:${normalizedEmail}`);
 
     return res.status(201).json({ message: "✅ User registered successfully." });
