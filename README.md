@@ -12,38 +12,32 @@ AvengersNexus is a full-featured full-stack web application built with the **MER
 - **Authentication**: JWT, OTP (via Email)
 - **Real-time**: Socket.IO
 - **Mailing**: Nodemailer
-- **Storage**: Multer (image uploads)
 - **Session**: Redis
-
 ---
-
 ## 📌 Key Features
 
 ### 🔐 Authentication & Authorization
 - Secure JWT-based login system
 - Role-based access control (Admin / Client)
 - OTP verification during signup
-- College-restricted domain registration (e.g. `.ahduni.edu.in`)
 
 ### 🧑‍💼 Admin Dashboard
 - Create and assign missions to users
 - Manage user attendance and rewards
 - View user profiles and statistics
 - Create posts (with option to mark as **important** and send via **email**)
-- View client-submitted posts
-- Real-time feedback and dashboard overview
+- Feedback 
 
 ### 👨‍🎓 Client Dashboard
 - View assigned missions and progress
 - Mark attendance using secure OTP system
-- Submit posts and feedback
+- Submit feedback
 - Track earned rewards
 - Real-time chat with admin/team
 
 ### 📅 Attendance System
 - OTP-based attendance marking
 - Real-time attendance updates (via WebSocket)
-- Admin view of live participants
 - Anti-spoofing measures and validations
 
 ### 🎯 Mission Management
@@ -54,12 +48,12 @@ AvengersNexus is a full-featured full-stack web application built with the **MER
 - Auto-creation of chat rooms upon mission assignment
 - Clients view assigned missions and status
 
-### 📝 Post Creation (Admin + Client)
-- Clients can create posts (e.g., updates, mission reports)
+### 📝 Post Creation (Admin)
+- Admin can create posts (e.g., updates, mission reports)
 - Admin can:
   - Create public announcements or mission updates
   - Mark a post as **Important**
-  - Automatically trigger **email notifications** to all users if post is important
+  - Automatically trigger **email notifications** to all users if the post is important
 
 ### ✉️ Mailing System
 - Email OTPs for verification and attendance
@@ -68,12 +62,12 @@ AvengersNexus is a full-featured full-stack web application built with the **MER
 
 ### 💬 Real-Time Chat
 - Room-based chats (one per mission)
-- 1-on-1 or group communication
+- Group communication
 - Powered by Socket.IO
-- Typing indicators, real-time delivery
+- Real-time delivery
 
 ### 🎁 Reward System
-- Admin can assign rewards to users based on performance
+- Admin can assign rewards to users
 - Clients can view accumulated rewards in their dashboard
 
 ---
