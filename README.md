@@ -79,3 +79,45 @@ AvengersNexus is a full-featured full-stack web application built with the **MER
 ```bash
 git clone https://github.com/avadhpatel1508/AvengersNexus.git
 cd AvengersNexus
+
+
+# Backend Setup
+cd backend
+npm install
+cp .env.example .env   # Fill in your environment variables
+npm run dev
+
+
+# Frontend Setup
+cd frontend
+npm install
+npm run dev
+
+
+PORT=5000
+MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/avengersDB
+JWT_SECRET=your_jwt_secret
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=your_email_password_or_app_password
+REDIS_URL=redis://localhost:6379
+CLIENT_URL=http://localhost:5173
+
+
+AvengersNexus/
+│
+├── backend/
+│   ├── controllers/
+│   ├── middleware/
+│   ├── models/
+│   ├── routes/
+│   ├── config/
+│   └── server.js
+│
+├── frontend/
+│   ├── components/
+│   ├── pages/
+│   ├── redux/
+│   ├── assets/
+│   └── App.jsx
+│
+└── README.md
