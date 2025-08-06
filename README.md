@@ -105,19 +105,38 @@ CLIENT_URL=http://localhost:5173
 
 AvengersNexus/
 │
-├── backend/
-│   ├── controllers/
-│   ├── middleware/
-│   ├── models/
-│   ├── routes/
-│   ├── config/
-│   └── server.js
+├── Backend/
+│   ├── src/
+│   │   ├── config/
+│   │   ├── controllers/
+│   │   ├── middleware/
+│   │   ├── models/
+│   │   ├── routes/
+│   │   ├── socket/
+│   │   ├── utils/
+│   │   └── index.js
+│   ├── .env
+│   ├── package.json
+│   └── ...
 │
-├── frontend/
-│   ├── components/
-│   ├── pages/
-│   ├── redux/
-│   ├── assets/
-│   └── App.jsx
+├── Frontend/
+│   ├── public/
+│   ├── src/
+│   │   ├── assets/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── socket/
+│   │   ├── store/
+│   │   ├── utils/
+│   │   ├── App.jsx
+│   │   ├── App.css
+│   │   ├── index.css
+│   │   └── authSlice.js
+│   ├── .env
+│   ├── package.json
+│   └── ...
+│
+└── README.md
+
 │
 └── README.md
