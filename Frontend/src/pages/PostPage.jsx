@@ -20,28 +20,8 @@ function PostsPage() {
       try {
         const postResponse = await axiosClient.get('/post/');
         const postData = Array.isArray(postResponse.data) ? postResponse.data : [];
-
-        const postsWithAvengers = await Promise.all(
-          postData.map(async (post) => {
-            if (Array.isArray(post.avengersAssigned) && post.avengersAssigned.length > 0) {
-              const avengerPromises = post.avengersAssigned.map(async (avengerId) => {
-                try {
-                  const avengerResponse = await axiosClient.get(`/user/getUser/${avengerId}`);
-                  const avenger = avengerResponse.data;
-                  return avenger && avenger._id ? avenger : null;
-                } catch {
-                  return null;
-                }
-              });
-              const avengers = (await Promise.all(avengerPromises)).filter(Boolean);
-              return { ...post, avengersAssigned: avengers };
-            }
-            return { ...post, avengersAssigned: [] };
-          })
-        );
-
-        setPosts(postsWithAvengers);
-        if (postsWithAvengers.length === 0) {
+        setPosts(postData);
+        if (postData.length === 0) {
           setError('No posts found.');
         }
       } catch (error) {
@@ -158,9 +138,9 @@ function PostsPage() {
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 min-h-screen pt-10 px-4 sm:px-6"> {/* Added pt-24 for fixed header spacing */}
+      <div className="relative z-10 min-h-screen pt-10 px-4 sm:px-6">
         {/* Fixed Sorting Controls */}
-        <div className=" top-24 left-0 right-0 z-20 py-4">
+        <div className="top-24 left-0 right-0 z-20 py-4">
           <div className="container mx-auto flex justify-center space-x-4 px-4">
             <button
               onClick={() => setSortBy('all')}
@@ -195,7 +175,7 @@ function PostsPage() {
           </div>
         </div>
 
-        <div className="container mx-auto mt-4"> {/* Small margin to keep posts close to buttons */}
+        <div className="container mx-auto mt-4">
           {error && sortedPosts().length === 0 ? (
             <motion.p
               className="text-center text-lg text-red-400"
@@ -241,12 +221,6 @@ function PostsPage() {
                     <p>
                       <span className="text-white font-semibold">🕒 Posted on:</span>{' '}
                       <span className="text-gray-400">{new Date(post.createdAt).toLocaleDateString()}</span>
-                    </p>
-                    <p>
-                      <span className="text-white font-semibold">🦸 Assigned Avengers:</span>{' '}
-                      <span className="text-gray-400">
-                        {post.avengersAssigned.map((a) => a.firstName).join(', ') || 'None'}
-                      </span>
                     </p>
                   </div>
 
