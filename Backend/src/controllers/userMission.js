@@ -215,73 +215,98 @@ const getCompletedMissionsByUser = async (req, res) => {
 
 
 const completeMissionById = async (req, res) => {
-    try {
-        const { id } = req.params;
+  try {
+    const { id } = req.params;
 
-        const mission = await Mission.findById(id).populate('avengersAssigned');
-        if (!mission) return res.status(404).json({ error: "Mission not found" });
-        if (mission.isCompleted) return res.status(400).json({ error: "Mission is already completed" });
+    const mission = await Mission.findById(id).populate('avengersAssigned');
+    if (!mission) return res.status(404).json({ error: "Mission not found" });
+    if (mission.isCompleted) return res.status(400).json({ error: "Mission is already completed" });
 
-        const amount = mission.amount;
-        if (!amount || amount <= 0) {
-            return res.status(400).json({ error: "Invalid reward amount in mission" });
-        }
-
-        const admin = await User.findOne({ role: 'admin' });
-        if (!admin) return res.status(404).json({ error: "Admin not found" });
-
-        const totalPayout = amount * mission.avengersAssigned.length;
-        if (admin.totalReward < totalPayout) {
-            return res.status(400).json({ error: "Admin does not have enough balance to pay users" });
-        }
-
-        const paymentResults = [];
-
-        for (const user of mission.avengersAssigned) {
-            try {
-                user.totalReward += amount;
-                user.missionCompleted.addToSet(mission._id);
-                await user.save();
-
-                mission.paymentInfo.push({
-                    user: user._id,
-                    amount,
-                    paymentIntentId: null,
-                    status: 'succeeded',
-                    paidAt: new Date()
-                });
-
-                paymentResults.push({ user: user._id, status: 'succeeded' });
-            } catch (err) {
-                mission.paymentInfo.push({
-                    user: user._id,
-                    amount,
-                    paymentIntentId: null,
-                    status: 'failed',
-                    paidAt: new Date()
-                });
-
-                paymentResults.push({ user: user._id, status: 'failed', reason: err.message });
-            }
-        }
-
-        admin.totalReward -= totalPayout;
-        await admin.save();
-
-        mission.isCompleted = true;
-        mission.completedAt = new Date();
-        await mission.save();
-
-        res.status(200).json({
-            message: "Mission marked as completed and rewards distributed",
-            missionId: mission._id,
-            payments: paymentResults
-        });
-    } catch (err) {
-        console.error("Error completing mission:", err);
-        res.status(500).json({ error: "Failed to complete mission", details: err.message });
+    const amount = mission.amount;
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: "Invalid reward amount in mission" });
     }
+
+    const admin = await User.findOne({ role: 'admin' });
+    if (!admin) return res.status(404).json({ error: "Admin not found" });
+
+    const totalPayout = amount * mission.avengersAssigned.length;
+    if (admin.totalReward < totalPayout) {
+      return res.status(400).json({ error: "Admin does not have enough balance to pay users" });
+    }
+
+    // Determine exp based on difficulty
+    let expToAdd = 0;
+    switch (mission.difficulty) {
+      case 'easy':
+        expToAdd = 50;
+        break;
+      case 'medium':
+        expToAdd = 100;
+        break;
+      case 'hard':
+        expToAdd = 200;
+        break;
+      default:
+        expToAdd = 0; // fallback
+    }
+
+    const paymentResults = [];
+
+    for (const user of mission.avengersAssigned) {
+      try {
+        user.totalReward += amount;
+
+        // Add mission to missionCompleted if not already present
+        if (!user.missionCompleted.includes(mission._id)) {
+          user.missionCompleted.push(mission._id);
+        }
+
+        // Add exp to user
+        user.exp = (user.exp || 0) + expToAdd;
+
+        await user.save();
+
+        mission.paymentInfo.push({
+          user: user._id,
+          amount,
+          paymentIntentId: null,
+          status: 'succeeded',
+          paidAt: new Date()
+        });
+
+        paymentResults.push({ user: user._id, status: 'succeeded' });
+      } catch (err) {
+        mission.paymentInfo.push({
+          user: user._id,
+          amount,
+          paymentIntentId: null,
+          status: 'failed',
+          paidAt: new Date()
+        });
+
+        paymentResults.push({ user: user._id, status: 'failed', reason: err.message });
+      }
+    }
+
+    admin.totalReward -= totalPayout;
+    await admin.save();
+
+    mission.isCompleted = true;
+    mission.completedAt = new Date();
+    await mission.save();
+
+    res.status(200).json({
+      message: "Mission marked as completed and rewards distributed",
+      missionId: mission._id,
+      payments: paymentResults
+    });
+  } catch (err) {
+    console.error("Error completing mission:", err);
+    res.status(500).json({ error: "Failed to complete mission", details: err.message });
+  }
 };
+
 
 const getAdminPaymentHistory = async (req, res) => {
   try {

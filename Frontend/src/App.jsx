@@ -23,6 +23,7 @@ import { initializeSocket, resetSocket } from './socket/socket';
 import Features from "./pages/FirstPage";
 import UserProfile from './pages/userProfile';
 import AdminReward from "./pages/AdminReward";
+import Leaderboard from "./pages/Leaderboard";
 
 // Protected route
 const ProtectedRoute = ({ element, role }) => {
@@ -97,6 +98,8 @@ function App() {
       <Route path="/attendance" element={<Attendance />} />
       <Route path="/avengers" element={<Avengers />} />
       <Route path="/userProfile" element={<UserProfile />} />
+      <Route path="/leaderboard" element={<Leaderboard />} />
+
 
 
       {/* Protected Routes */}

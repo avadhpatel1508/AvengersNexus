@@ -53,10 +53,11 @@ const userSchema = new Schema({
     type: Number,
     default: 0
   },
-  level:{
-    levelNo:Number,
-    exp:Number
-  }
+  exp: {
+    type: Number,
+    default: 0,
+    min: 0
+    }
 
 }, {
   timestamps: true
