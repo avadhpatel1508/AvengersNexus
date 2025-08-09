@@ -86,93 +86,49 @@ attendanceRouter.get('/check-active', async (req, res) => {
 
 attendanceRouter.get('/monthlysummary', userMiddleware, attendanceController.getMonthlySummary);
 
-attendanceRouter.get('/days-present', userMiddleware, async (req, res) => {
+attendanceRouter.get('/days-present-monthly', userMiddleware, async (req, res) => {
   try {
-    const { userId, startDate, endDate } = req.query;
+    const { userId, month, year } = req.query;
 
-    // Validate date inputs
-    if (!startDate || !endDate) {
-      return res.status(400).json({ success: false, message: 'startDate and endDate are required' });
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'userId is required' });
+    }
+    if (!month || !year) {
+      return res.status(400).json({ success: false, message: 'month and year are required' });
     }
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      return res.status(400).json({ success: false, message: 'Invalid date format' });
+    const monthNum = parseInt(month); // 1 - 12
+    const yearNum = parseInt(year);
+
+    if (isNaN(monthNum) || monthNum < 1 || monthNum > 12 || isNaN(yearNum)) {
+      return res.status(400).json({ success: false, message: 'Invalid month or year' });
     }
 
-    // Adjust end date to include the full day
-    const startOfDay = new Date(start.setUTCHours(0, 0, 0, 0));
-    const endOfDay = new Date(end.setUTCHours(23, 59, 59, 999));
-
-    // Check user permissions
-    if (userId && req.user._id.toString() !== userId && req.user.role !== 'admin') {
+    // Permissions check: user can only query their own data or admins can query any user
+    if (req.user._id.toString() !== userId && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
 
-    // Build query
-    const query = {
-      date: { $gte: startOfDay, $lte: endOfDay },
+    // Get first and last date of month
+    const startDate = new Date(Date.UTC(yearNum, monthNum - 1, 1, 0, 0, 0));
+    const endDate = new Date(Date.UTC(yearNum, monthNum, 0, 23, 59, 59, 999));
+
+    // Query to count present days for user in the month
+    const daysPresent = await Attendance.countDocuments({
+      user: userId,
       status: 'Present',
-    };
-    if (userId) {
-      query.user = userId;
-    }
-
-    // MongoDB aggregation to count days present
-    const aggregation = [
-      { $match: query },
-      {
-        $group: {
-          _id: userId ? null : '$user',
-          daysPresent: { $sum: 1 },
-        },
-      },
-      {
-        $lookup: {
-          from: 'users',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'user',
-        },
-      },
-      {
-        $unwind: { path: '$user', preserveNullAndEmptyArrays: true },
-      },
-      {
-        $project: {
-          userId: userId ? null : '$user._id',
-          userName: userId ? null : '$user.firstName',
-          daysPresent: 1,
-        },
-      },
-    ];
-
-    const result = await Attendance.aggregate(aggregation);
-
-    // Format response
-    if (userId) {
-      const daysPresent = result.length > 0 ? result[0].daysPresent : 0;
-      return res.status(200).json({
-        success: true,
-        userId,
-        daysPresent,
-      });
-    }
-
-    const formattedResult = result.map((entry) => ({
-      userId: entry.userId,
-      userName: entry.userName || 'Unknown',
-      daysPresent: entry.daysPresent,
-    }));
+      date: { $gte: startDate, $lte: endDate },
+    });
 
     res.status(200).json({
       success: true,
-      startDate,
-      endDate,
-      daysPresent: formattedResult,
+      userId,
+      month: monthNum,
+      year: yearNum,
+      daysPresent,
     });
   } catch (err) {
+    console.error(err);
     res.status(500).json({
       success: false,
       message: 'Server error',
@@ -180,5 +136,6 @@ attendanceRouter.get('/days-present', userMiddleware, async (req, res) => {
     });
   }
 });
+
 
 module.exports = attendanceRouter;

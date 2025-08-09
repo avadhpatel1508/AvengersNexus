@@ -13,12 +13,62 @@ const UserProfile = () => {
   const [user, setUser] = useState(null);
   const [missionStats, setMissionStats] = useState(null);
   const [completedMissions, setCompletedMissions] = useState([]);
+  const [attendanceHistory, setAttendanceHistory] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState('');
+  const [attendanceError, setAttendanceError] = useState('');
+  const [monthlyAttendance, setMonthlyAttendance] = useState(null);
+  const [monthlyAttendanceError, setMonthlyAttendanceError] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  // Helper to format date/time like in AttendanceSubmit
+  const formatDateTime = (isoDate) => {
+    const dateObj = new Date(isoDate);
+    const date = dateObj.toLocaleDateString('en-IN');
+    const time = dateObj.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    return { date, time };
+  };
+
+  const fetchAttendance = async (userId) => {
+    try {
+      setAttendanceError('');
+      const { data } = await axiosClient.get(`/attendance/${userId}`);
+      if (data?.success) {
+        setAttendanceHistory(data.attendance || []);
+      } else {
+        setAttendanceError('Failed to fetch attendance history.');
+      }
+    } catch (err) {
+      console.error('❌ Error fetching attendance:', err);
+      setAttendanceError('Something went wrong fetching attendance.');
+    }
+  };
+
+  const fetchMonthlyAttendance = async (userId, month, year) => {
+    try {
+      setMonthlyAttendanceError('');
+      setMonthlyAttendance(null); // clear previous while loading
+      const { data } = await axiosClient.get(
+        `/attendance/days-present-monthly?userId=${userId}&month=${month}&year=${year}`
+      );
+      if (data?.success) {
+        setMonthlyAttendance(data.daysPresent);
+      } else {
+        setMonthlyAttendanceError('Failed to fetch monthly attendance summary.');
+      }
+    } catch (err) {
+      console.error('❌ Error fetching monthly attendance:', err);
+      setMonthlyAttendanceError('Something went wrong fetching monthly attendance.');
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,6 +89,15 @@ const UserProfile = () => {
         });
         setUser(userResponse.data.user);
 
+        if (userResponse.data.user._id) {
+          await fetchAttendance(userResponse.data.user._id);
+          await fetchMonthlyAttendance(
+            userResponse.data.user._id,
+            selectedMonth,
+            selectedYear
+          );
+        }
+
         // Fetch mission stats
         try {
           const missionStatsResponse = await axiosClient.get(
@@ -51,23 +110,26 @@ const UserProfile = () => {
           );
           setMissionStats(missionStatsResponse.data);
         } catch (statsErr) {
-          console.error('Error fetching mission stats:', statsErr.response?.data || statsErr.message);
+          console.error(
+            'Error fetching mission stats:',
+            statsErr.response?.data || statsErr.message
+          );
           setMissionStats({ assignedMissions: 0, completedMissions: 0, totalMissions: 0 });
         }
 
         // Fetch completed missions
         try {
-          const missionsResponse = await axiosClient.get(
-            '/mission/missionCompletedByUser',
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
+          const missionsResponse = await axiosClient.get('/mission/missionCompletedByUser', {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
           setCompletedMissions(Array.isArray(missionsResponse.data) ? missionsResponse.data : []);
         } catch (missionsErr) {
-          console.error('Error fetching completed missions:', missionsErr.response?.data || missionsErr.message);
+          console.error(
+            'Error fetching completed missions:',
+            missionsErr.response?.data || missionsErr.message
+          );
           setCompletedMissions([]);
         }
       } catch (err) {
@@ -86,6 +148,13 @@ const UserProfile = () => {
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
+
+  // Refetch monthly attendance when user or selected month/year changes
+  useEffect(() => {
+    if (user && user._id) {
+      fetchMonthlyAttendance(user._id, selectedMonth, selectedYear);
+    }
+  }, [user, selectedMonth, selectedYear]);
 
   const handleLogout = () => {
     dispatch(logoutUser());
@@ -120,6 +189,15 @@ const UserProfile = () => {
     },
   };
 
+  // Month options (1-12)
+  const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1);
+  // Year options: 2020 to currentYear + 2
+  const currentYear = new Date().getFullYear();
+  const yearOptions = [];
+  for (let y = 2020; y <= currentYear + 2; y++) {
+    yearOptions.push(y);
+  }
+
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       <UserNavbar />
@@ -143,12 +221,32 @@ const UserProfile = () => {
       <div className="fixed inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-black to-blue-950"></div>
         <div className="absolute inset-0 opacity-20">
-          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <svg
+            className="w-full h-full"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+          >
             <defs>
-              <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-                <path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(59, 130, 246, 0.3)" strokeWidth="0.5" />
+              <pattern
+                id="grid"
+                width="10"
+                height="10"
+                patternUnits="userSpaceOnUse"
+              >
+                <path
+                  d="M 10 0 L 0 0 0 10"
+                  fill="none"
+                  stroke="rgba(59, 130, 246, 0.3)"
+                  strokeWidth="0.5"
+                />
               </pattern>
-              <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <linearGradient
+                id="heroGrad"
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="100%"
+              >
                 <stop offset="0%" stopColor="#dc2626" stopOpacity="0.1" />
                 <stop offset="50%" stopColor="#ffffff" stopOpacity="0.05" />
                 <stop offset="100%" stopColor="#2563eb" stopOpacity="0.1" />
@@ -235,9 +333,9 @@ const UserProfile = () => {
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/5 to-transparent animate-pulse"></div>
               </motion.div>
 
-              {/* Dummy Attendance History */}
+              {/* Real Attendance History */}
               <motion.div
-                className="bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/20 shadow-2xl perspective-1000"
+                className="bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/20 shadow-2xl perspective-1000 overflow-x-auto"
                 variants={itemVariants}
                 whileHover={{ rotateY: 5, rotateX: 2, scale: 1.05 }}
                 style={{ transformStyle: 'preserve-3d' }}
@@ -245,30 +343,45 @@ const UserProfile = () => {
                 <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-red-500 via-white to-blue-500 bg-clip-text text-transparent">
                   Attendance History
                 </h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left">
-                    <thead>
-                      <tr className="bg-gray-700/50">
-                        <th className="p-3">Date</th>
-                        <th className="p-3">Status</th>
+
+                {attendanceError && (
+                  <p className="text-red-400 mb-4">{attendanceError}</p>
+                )}
+
+                <table className="w-full table-auto text-sm sm:text-base text-left">
+                  <thead>
+                    <tr className="bg-cyan-900/50 text-white">
+                      <th className="px-4 py-2">Date</th>
+                      <th className="px-4 py-2">Time</th>
+                      <th className="px-4 py-2">Session ID</th>
+                      <th className="px-4 py-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attendanceHistory.length === 0 ? (
+                      <tr>
+                        <td colSpan="4" className="text-center text-red-400 py-4">
+                          No attendance records found.
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-t border-white/20">
-                        <td className="p-3 text-gray-300">08/01/2025</td>
-                        <td className="p-3 text-green-400 font-bold">Present</td>
-                      </tr>
-                      <tr className="border-t border-white/20">
-                        <td className="p-3 text-gray-300">08/02/2025</td>
-                        <td className="p-3 text-yellow-400 font-bold">Absent</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/5 to-transparent animate-pulse"></div>
+                    ) : (
+                      attendanceHistory.map((record) => {
+                        const { date, time } = formatDateTime(record.date);
+                        return (
+                          <tr key={record._id} className="border-t border-white/20">
+                            <td className="px-4 py-2">{date}</td>
+                            <td className="px-4 py-2">{time}</td>
+                            <td className="px-4 py-2">{record.otpSessionId}</td>
+                            <td className="px-4 py-2">{record.status}</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </motion.div>
 
-              {/* Dummy Monthly Attendance Summary */}
+              {/* Monthly Attendance Summary */}
               <motion.div
                 className="bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/20 shadow-2xl perspective-1000"
                 variants={itemVariants}
@@ -281,19 +394,40 @@ const UserProfile = () => {
                 <div className="flex mb-4">
                   <select
                     className="mr-2 bg-gray-700/50 text-white p-2 rounded border border-white/20"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
                   >
-                    <option>8</option>
+                    {monthOptions.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
                   </select>
                   <select
                     className="bg-gray-700/50 text-white p-2 rounded border border-white/20"
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
                   >
-                    <option>2025</option>
+                    {yearOptions.map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="text-gray-300">
-                  <p>
-                    <span className="text-white font-semibold">John Doe:</span> 20 days present
-                  </p>
+                  {monthlyAttendanceError ? (
+                    <p className="text-red-400">{monthlyAttendanceError}</p>
+                  ) : monthlyAttendance !== null ? (
+                    <p>
+                      <span className="text-white font-semibold">
+                        {user ? user.firstName : 'User'}:
+                      </span>{' '}
+                      {monthlyAttendance} days present
+                    </p>
+                  ) : (
+                    <p>Loading...</p>
+                  )}
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/5 to-transparent animate-pulse"></div>
               </motion.div>
@@ -316,7 +450,10 @@ const UserProfile = () => {
                     </p>
                     <p>
                       <span className="text-white font-semibold">🔄 Ongoing Missions:</span>{' '}
-                      <span className="text-blue-400">{(missionStats.assignedMissions || 0) - (missionStats.completedMissions || 0)}</span>
+                      <span className="text-blue-400">
+                        {(missionStats.assignedMissions || 0) -
+                          (missionStats.completedMissions || 0)}
+                      </span>
                     </p>
                     <p>
                       <span className="text-white font-semibold">✅ Completed Missions:</span>{' '}
@@ -343,7 +480,10 @@ const UserProfile = () => {
                         <p className="font-semibold text-white">{mission.title}</p>
                         <p className="text-gray-400">{mission.description}</p>
                         <p className="text-gray-400">
-                          Completed At: {mission.completedAt ? new Date(mission.completedAt).toLocaleDateString() : 'N/A'}
+                          Completed At:{' '}
+                          {mission.completedAt
+                            ? new Date(mission.completedAt).toLocaleDateString()
+                            : 'N/A'}
                         </p>
                       </div>
                     ))

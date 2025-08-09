@@ -24,7 +24,7 @@ function AdminNavbar() {
     ];
 
     const adminLinks = [
-        { to: '/your-reward', label: 'Your Reward' },
+        { to: '/admin-reward', label: 'Your Reward' },
         { to: '/attendaceupdations', label: 'Start Attendance' },
         { to: '/missionupdations', label: 'Create Mission' },
         { to: '/postupdations', label: 'Create Post' },

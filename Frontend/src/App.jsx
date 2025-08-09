@@ -22,6 +22,7 @@ import ProfilePage from "./pages/profilePage";
 import { initializeSocket, resetSocket } from './socket/socket';
 import Features from "./pages/FirstPage";
 import UserProfile from './pages/userProfile';
+import AdminReward from "./pages/AdminReward";
 
 // Protected route
 const ProtectedRoute = ({ element, role }) => {
@@ -104,6 +105,8 @@ function App() {
       <Route path="/missionupdations" element={<ProtectedRoute element={<MissionUpdations />} />} />
       <Route path="/postupdations" element={<ProtectedRoute element={<PostUpdations />} />} />
       <Route path="/your-reward" element={<ProtectedRoute element={<UserReward />} />} />
+      <Route path="/admin-reward" element={<ProtectedRoute element={<AdminReward />} />} />
+
       <Route path="/userProfile" element={<ProtectedRoute element={<UserProfile />} />} />
 
       <Route path="/attendaceupdations" element={

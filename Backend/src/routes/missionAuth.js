@@ -11,7 +11,8 @@ const {
   getCompletedMissionsByUser,
   completeMissionById,
   getRewardsByUser,
-  getUserMissionStats
+  getUserMissionStats,
+  getAdminPaymentHistory
 } = require('../controllers/userMission');
 
 module.exports = (io) => {
@@ -33,6 +34,8 @@ module.exports = (io) => {
   missionRouter.get('/getRewardsByUser/:userId', userMiddleware, getRewardsByUser);
   missionRouter.get('/missionStats/:userId', userMiddleware, getUserMissionStats);
   missionRouter.get('/:id', userMiddleware, getMissionById);
+  missionRouter.get('/adminpayment', adminMiddleware, getAdminPaymentHistory);
+
 
   return missionRouter;
 };

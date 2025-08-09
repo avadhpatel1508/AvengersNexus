@@ -283,6 +283,47 @@ const completeMissionById = async (req, res) => {
     }
 };
 
+const getAdminPaymentHistory = async (req, res) => {
+  try {
+    // Aggregate payments info from missions, join user info and mission info
+    const payments = await Mission.aggregate([
+      { $unwind: '$paymentInfo' },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'paymentInfo.user',
+          foreignField: '_id',
+          as: 'user',
+        },
+      },
+      {
+        $unwind: '$user',
+      },
+      {
+        $project: {
+          _id: 0,
+          paymentId: '$paymentInfo._id',
+          userId: '$user._id',
+          userName: '$user.name',
+          userEmail: '$user.email',
+          missionId: '$_id',
+          missionTitle: '$title',
+          amount: '$paymentInfo.amount',
+          status: '$paymentInfo.status',
+          paidAt: '$paymentInfo.paidAt',
+          paymentIntentId: '$paymentInfo.paymentIntentId',
+        },
+      },
+      { $sort: { paidAt: -1 } },
+    ]);
+
+    res.json(payments);
+  } catch (error) {
+    console.error('Error fetching admin payment history:', error);
+    res.status(500).json({ error: 'Failed to fetch payment history' });
+  }
+};
+
 const getRewardsByUser = async (req, res) => {
     const { userId } = req.params;
 
@@ -354,5 +395,6 @@ module.exports = {
     getCompletedMissionsByUser,
     completeMissionById,
     getRewardsByUser,
-    getUserMissionStats
+    getUserMissionStats,
+    getAdminPaymentHistory
 };
