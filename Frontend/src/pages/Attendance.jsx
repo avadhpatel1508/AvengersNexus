@@ -9,6 +9,7 @@ import UserNavbar from '../components/UserNavbar';
 import { useSelector } from 'react-redux';
 import Footer from '../components/Footer';
 import Loader from './Loader';
+import axiosClient from '../utils/axiosClient';
 import {
   BarChart,
   Bar,
@@ -65,63 +66,66 @@ const Attendance = () => {
   };
 
   const fetchAttendance = async () => {
-    const formattedDate = formatDate(selectedDate);
-    setLoading(true);
-    setError('');
-    try {
-      const response = await axios.get(
-        `http://localhost:4000/attendance/date/${formattedDate}`,
-        { withCredentials: true }
-      );
-      const data = Array.isArray(response.data.attendance) ? response.data.attendance : [];
-      setAttendanceData(data);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch attendance');
-      setAttendanceData([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const formattedDate = formatDate(selectedDate);
+  setLoading(true);
+  setError('');
+  try {
+    const response = await axiosClient.get(
+      `/attendance/date/${formattedDate}`, // no need for full URL if baseURL set in axiosClient
+      { withCredentials: true }
+    );
+    const data = Array.isArray(response.data.attendance) ? response.data.attendance : [];
+    setAttendanceData(data);
+  } catch (err) {
+    setError(err.response?.data?.message || 'Failed to fetch attendance');
+    setAttendanceData([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const fetchDailyCounts = async () => {
-    setGraphLoading(true);
-    try {
-      const response = await axios.get(
-        `http://localhost:4000/attendance/daily-counts?month=${month + 1}&year=${year}`,
-        { withCredentials: true }
-      );
-      console.log('Daily Counts API Response:', response.data);
-      const data = Array.isArray(response.data) ? response.data : [];
-      setDailyCounts(data);
-    } catch (err) {
-      console.error('Error fetching daily counts:', err);
-      setDailyCounts([]);
-      setError(err.response?.data?.message || 'Failed to fetch daily counts');
-    } finally {
-      setGraphLoading(false);
-    }
-  };
+  setGraphLoading(true);
+  try {
+    const response = await axiosClient.get(
+      `/attendance/daily-counts?month=${month + 1}&year=${year}`,
+      { withCredentials: true }
+    );
+    console.log('Daily Counts API Response:', response.data);
+    const data = Array.isArray(response.data) ? response.data : [];
+    setDailyCounts(data);
+  } catch (err) {
+    console.error('Error fetching daily counts:', err);
+    setDailyCounts([]);
+    setError(err.response?.data?.message || 'Failed to fetch daily counts');
+  } finally {
+    setGraphLoading(false);
+  }
+};
+
 
   useEffect(() => {
     const fetchMonthlyAttendance = async () => {
-      setGraphLoading(true);
-      try {
-        const res = await axios.get(
-          `http://localhost:4000/attendance/monthly-summary?month=${month + 1}&year=${year}`,
-          { withCredentials: true }
-        );
-        console.log('Monthly Data API Response:', res.data);
-        const data = Array.isArray(res.data.summary) ? res.data.summary : [];
-        setMonthlyData(data);
-      } catch (err) {
-        console.error('Error fetching monthly data:', err);
-        setMonthlyData([]);
-        setError(err.response?.data?.message || 'Failed to fetch monthly data');
-      } finally {
-        setGraphLoading(false);
-        setIsLoaded(true);
-      }
-    };
+  setGraphLoading(true);
+  try {
+    const res = await axiosClient.get(
+      `/attendance/monthly-summary?month=${month + 1}&year=${year}`,
+      { withCredentials: true }
+    );
+    console.log('Monthly Data API Response:', res.data);
+    const data = Array.isArray(res.data.summary) ? res.data.summary : [];
+    setMonthlyData(data);
+  } catch (err) {
+    console.error('Error fetching monthly data:', err);
+    setMonthlyData([]);
+    setError(err.response?.data?.message || 'Failed to fetch monthly data');
+  } finally {
+    setGraphLoading(false);
+    setIsLoaded(true);
+  }
+};
+
 
     if (viewMode === 'graph') {
       fetchMonthlyAttendance();
