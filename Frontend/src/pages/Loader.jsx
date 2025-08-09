@@ -1,12 +1,25 @@
-import { motion, AnimatePresence } from 'framer-motion';
+
+import { motion } from 'framer-motion';
 
 const Loader = () => {
   return (
-    <div className="loader-wrapper">
-      <div className="loader JS_on">
+    <motion.div
+      className="loader-wrapper"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <div className="loader">
         <span className="binary" />
         <span className="binary" />
-        <span className="getting-there">LOADING STUFF...</span>
+        <motion.span
+          className="getting-there"
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          LOADING STUFF...
+        </motion.span>
       </div>
       <style jsx>{`
         .loader-wrapper {
@@ -34,7 +47,7 @@ const Loader = () => {
           border-left: 50px solid transparent;
           border-right: 50px solid transparent;
           border-bottom: 20px solid #1b2a33;
-          transform: scale(0);
+          transform: scale(1); /* Always visible */
           transition: all 0.2s ease;
         }
 
@@ -96,11 +109,6 @@ const Loader = () => {
           animation: d 0.7s linear infinite;
         }
 
-        .loader.JS_on::before,
-        .loader.JS_on::after {
-          transform: scale(1);
-        }
-
         @keyframes a {
           0% {
             transform: translate(30px, 0) rotate(30deg);
@@ -145,7 +153,7 @@ const Loader = () => {
           }
         }
       `}</style>
-    </div>
+    </motion.div>
   );
 };
 

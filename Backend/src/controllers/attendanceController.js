@@ -194,71 +194,71 @@ const getAttendanceByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    if (req.user._id.toString() !== userId && req.user.role !== 'admin') {
+    // Ensure req.user exists
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const loggedInUserId = req.user._id?.toString();
+    const loggedInUserRole = req.user.role;
+
+    // Only allow if the user is viewing their own data OR is admin
+    if (loggedInUserId !== userId && loggedInUserRole !== 'admin') {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
 
     const attendance = await Attendance.find({ user: userId }).sort({ date: -1 });
-    res.status(200).json({ success: true, userId, attendance });
+    return res.status(200).json({ success: true, userId, attendance });
+
   } catch (err) {
-    res.status(500).json({ success: false, message: 'Server error', error: err.message });
+    console.error('Error fetching attendance by user ID:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: err.message
+    });
   }
 };
 
-// GET MONTHLY SUMMARY
+// GET MONTHLY SUMMARY FOR LOGGED-IN USER
 const getMonthlySummary = async (req, res) => {
   const { month, year } = req.query;
 
   if (!month || !year) {
-    return res.status(400).json({ message: 'Month and year are required' });
+    return res.status(400).json({ success: false, message: 'Month and year are required' });
   }
 
-  const monthNum = parseInt(month);
-  const yearNum = parseInt(year);
+  const monthNum = parseInt(month, 10);
+  const yearNum = parseInt(year, 10);
 
   const startDate = new Date(yearNum, monthNum - 1, 1);
   const endDate = new Date(yearNum, monthNum, 1);
 
   try {
-    const summary = await Attendance.aggregate([
-      {
-        $match: {
-          date: { $gte: startDate, $lt: endDate },
-          status: 'Present',
-        },
-      },
-      {
-        $group: {
-          _id: '$user',
-          daysPresent: { $sum: 1 },
-        },
-      },
-      {
-        $lookup: {
-          from: 'users',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'userDetails',
-        },
-      },
-      {
-        $unwind: '$userDetails',
-      },
-      {
-        $project: {
-          _id: 0,
-          userName: {
-            $concat: ['$userDetails.firstName', ' ', '$userDetails.lastName'],
-          },
-          daysPresent: 1,
-        },
-      },
-    ]);
+    // Logged-in user's ID from token
+    const userId = req.user._id;
 
-    res.json({ summary });
+    const attendanceRecords = await Attendance.find({
+      user: userId,
+      date: { $gte: startDate, $lt: endDate },
+    }).sort({ date: 1 });
+
+    const daysPresent = attendanceRecords.filter(r => r.status === 'Present').length;
+    const daysAbsent = attendanceRecords.length - daysPresent;
+
+    return res.status(200).json({
+      success: true,
+      userId,
+      month: monthNum,
+      year: yearNum,
+      totalDays: attendanceRecords.length,
+      daysPresent,
+      daysAbsent,
+      records: attendanceRecords
+    });
   } catch (err) {
-    console.error('Error getting monthly summary:', err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('❌ Error getting monthly summary:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 

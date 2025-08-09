@@ -188,24 +188,31 @@ const getAllMission = async (req, res) => {
     }
 };
 
+// getCompletedMissionsByUser.js
 const getCompletedMissionsByUser = async (req, res) => {
-    try {
-        const userId = req.result._id;
+  try {
+    const userId = req.user._id;
 
-        const user = await User.findById(userId).populate({
-            path: "missionCompleted",
-            select: "_id title difficulty discription"
-        });
-        
-        if (!user || !user.missionCompleted.length) {
-            return res.status(200).send([]);
-        }
-        res.status(200).send(user.missionCompleted);
+    const user = await User.findById(userId).populate({
+      path: "missionCompleted",
+      select: "_id title difficulty description"
+    });
+    
+    if (!user || !user.missionCompleted.length) {
+      return res.status(200).json([]);
     }
-    catch (err) {
-        res.status(500).send("Server Error");
-    }
+    
+    res.status(200).json(user.missionCompleted);
+  } catch (err) {
+    console.error("❌ getCompletedMissionsByUser Error:", err);
+    res.status(500).json({
+      success: false,
+      error: "server/error",
+      message: "Server Error"
+    });
+  }
 };
+
 
 const completeMissionById = async (req, res) => {
     try {

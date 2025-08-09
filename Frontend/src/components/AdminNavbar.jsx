@@ -9,8 +9,10 @@ function AdminNavbar() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const handleLogout = () => {
-        dispatch(logoutUser());
-    };
+            dispatch(logoutUser());
+            resetSocket(); 
+            navigate('/login');
+        };
 
     const menuItems = [
         { to: '/posts', label: 'Posts' },

@@ -120,18 +120,18 @@ const UserReward = () => {
       <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
 
       <AnimatePresence>
-        {!isLoaded && (
-          <motion.div
-            key="loader"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className="fixed inset-0 flex items-center justify-center z-[1000] bg-black"
-          >
-            <Loader />
-          </motion.div>
-        )}
-      </AnimatePresence>
+  {!isLoaded && (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <Loader />
+    </motion.div>
+  )}
+</AnimatePresence>
 
       {isLoaded && (
         <>

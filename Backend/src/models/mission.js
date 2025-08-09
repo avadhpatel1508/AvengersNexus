@@ -16,7 +16,7 @@ const missionSchema = new Schema({
     type: String,
     required: true,  
     minLength: 2,
-    maxLength: 15
+    maxLength: 40
   },
   avengersAssigned: [{
     type: Schema.Types.ObjectId,
