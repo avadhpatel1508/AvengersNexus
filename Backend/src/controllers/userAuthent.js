@@ -27,7 +27,7 @@ const SendOtpSignup = async (req, res) => {
     }
 
     //Generate and store OTP
-    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
     await redisClient.set(`otp:${normalizedEmail}`, otp, { EX: 300 }); 
     await sendOtpMail(normalizedEmail, otp);
 

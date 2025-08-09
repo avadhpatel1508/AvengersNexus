@@ -83,5 +83,102 @@ attendanceRouter.post('/mark', userMiddleware, async (req, res) => {
 attendanceRouter.get('/check-active', async (req, res) => {
   return attendanceController.checkactive(req, res);
 });
+
 attendanceRouter.get('/monthlysummary', userMiddleware, attendanceController.getMonthlySummary);
+
+attendanceRouter.get('/days-present', userMiddleware, async (req, res) => {
+  try {
+    const { userId, startDate, endDate } = req.query;
+
+    // Validate date inputs
+    if (!startDate || !endDate) {
+      return res.status(400).json({ success: false, message: 'startDate and endDate are required' });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ success: false, message: 'Invalid date format' });
+    }
+
+    // Adjust end date to include the full day
+    const startOfDay = new Date(start.setUTCHours(0, 0, 0, 0));
+    const endOfDay = new Date(end.setUTCHours(23, 59, 59, 999));
+
+    // Check user permissions
+    if (userId && req.user._id.toString() !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
+    // Build query
+    const query = {
+      date: { $gte: startOfDay, $lte: endOfDay },
+      status: 'Present',
+    };
+    if (userId) {
+      query.user = userId;
+    }
+
+    // MongoDB aggregation to count days present
+    const aggregation = [
+      { $match: query },
+      {
+        $group: {
+          _id: userId ? null : '$user',
+          daysPresent: { $sum: 1 },
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'user',
+        },
+      },
+      {
+        $unwind: { path: '$user', preserveNullAndEmptyArrays: true },
+      },
+      {
+        $project: {
+          userId: userId ? null : '$user._id',
+          userName: userId ? null : '$user.firstName',
+          daysPresent: 1,
+        },
+      },
+    ];
+
+    const result = await Attendance.aggregate(aggregation);
+
+    // Format response
+    if (userId) {
+      const daysPresent = result.length > 0 ? result[0].daysPresent : 0;
+      return res.status(200).json({
+        success: true,
+        userId,
+        daysPresent,
+      });
+    }
+
+    const formattedResult = result.map((entry) => ({
+      userId: entry.userId,
+      userName: entry.userName || 'Unknown',
+      daysPresent: entry.daysPresent,
+    }));
+
+    res.status(200).json({
+      success: true,
+      startDate,
+      endDate,
+      daysPresent: formattedResult,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: err.message,
+    });
+  }
+});
+
 module.exports = attendanceRouter;

@@ -7,6 +7,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, NavLink } from 'react-router';
 import { registerUser } from '../authSlice';
 import axiosClient from '../utils/axiosClient';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const signupSchema = z.object({
   firstName: z.string().min(3, 'First name must be at least 3 characters'),
@@ -17,7 +19,7 @@ const signupSchema = z.object({
 function Signup() {
   const [showpassWord, setShowpassWord] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState(['', '', '', '']);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [otpMessage, setOtpMessage] = useState('');
   const [emailError, setEmailError] = useState('');
@@ -108,7 +110,15 @@ function Signup() {
       const resultAction = await dispatch(registerUser(data));
       if (registerUser.fulfilled.match(resultAction)) {
         console.log('Registration successful:', resultAction.payload);
-        alert('✅ Account created successfully!');
+        toast.success('✅ Account created successfully!', {
+          position: 'top-right',
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          theme: 'dark',
+        });
         navigate('/login');
       } else {
         const errMsg = resultAction.payload?.message || 'Signup failed.';
@@ -133,16 +143,16 @@ function Signup() {
     }
     try {
       setIsSendingOtp(true);
-      setOtpSent(true); // Show OTP input immediately
+      setOtpSent(true);
       if (!emailValue) {
         setEmailError('Please enter a valid email first.');
-        setOtpSent(false); // Revert if email is invalid
+        setOtpSent(false);
         return;
       }
       const normalizedEmail = emailValue.trim().toLowerCase();
       const res = await axiosClient.post('/user/send-otp', { emailId: normalizedEmail });
       if (res.status === 200) {
-        setOtp(['', '', '', '']);
+        setOtp(['', '', '', '', '', '']);
         setOtpMessage('✅ OTP sent to your email! Please check your inbox.');
         setEmailError('');
         setResendCooldown(30);
@@ -150,7 +160,7 @@ function Signup() {
     } catch (err) {
       console.error('Send OTP failed:', err);
       const errMsg = err.response?.data?.message || 'Failed to send OTP. Please try again.';
-      setOtpSent(false); // Revert OTP input display on error
+      setOtpSent(false);
       if (errMsg.includes('exists') || errMsg.includes('Email is already registered')) {
         setEmailError('❌ This email is already registered. Please use a different email.');
       } else {
@@ -165,7 +175,7 @@ function Signup() {
     const newOtp = [...otp];
     newOtp[index] = value.slice(-1);
     setOtp(newOtp);
-    if (value && index < 3) {
+    if (value && index < 5) {
       const nextInput = document.getElementById(`otp-${index + 1}`);
       nextInput?.focus();
     }
@@ -177,8 +187,8 @@ function Signup() {
 
   const verifyOtp = async () => {
     const fullOtp = otp.join('');
-    if (fullOtp.length !== 4) {
-      setOtpMessage('Please enter all 4 digits of the OTP.');
+    if (fullOtp.length !== 6) {
+      setOtpMessage('Please enter all 6 digits of the OTP.');
       return;
     }
     try {
@@ -214,6 +224,7 @@ function Signup() {
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
+      <ToastContainer />
       <div className="fixed inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-black to-blue-950" />
         <div className="absolute inset-0 opacity-20">
@@ -496,4 +507,4 @@ function Signup() {
   );
 }
 
-export default Signup;
+export default Signup;  
