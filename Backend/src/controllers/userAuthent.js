@@ -20,13 +20,13 @@ const SendOtpSignup = async (req, res) => {
   const normalizedEmail = emailId.trim().toLowerCase();
 
   try {
-    // ✅ Check if user already exists (Signup-specific)
+    //Check if user already exists (Signup-specific)
     const existingUser = await User.findOne({ emailId: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // ✅ Generate and store OTP
+    //Generate and store OTP
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
     await redisClient.set(`otp:${normalizedEmail}`, otp, { EX: 300 }); 
     await sendOtpMail(normalizedEmail, otp);
@@ -71,19 +71,19 @@ const register = async (req, res) => {
     // 1. Check OTP verification
     const isVerified = await redisClient.get(`verified:${normalizedEmail}`);
     if (isVerified !== "true") {
-      return res.status(400).json({ message: "❌ Please verify OTP before registering." });
+      return res.status(400).json({ message: "Please verify OTP before registering." });
     }
 
     // 2. Check if email already exists
     const existingEmail = await User.findOne({ emailId: normalizedEmail });
     if (existingEmail) {
-      return res.status(400).json({ message: "❌ Email is already registered." });
+      return res.status(400).json({ message: "Email is already registered." });
     }
 
     // 3. Check if first name is already used (optional, based on your logic)
     const existingFirstName = await User.findOne({ firstName });
     if (existingFirstName) {
-      return res.status(400).json({ message: "❌ First name is already taken." });
+      return res.status(400).json({ message: "First name is already taken." });
     }
 
     // 4. Password strength validation
@@ -93,7 +93,7 @@ const register = async (req, res) => {
                         !/[!@#$%^&*(),.?":{}|<>]/.test(passWord); // Added special character check
     if (weakPassword) {
       return res.status(400).json({ 
-        message: "❌ Password is too weak. Use at least 8 characters, one uppercase letter, one number, and one special character (!@#$%^&*(),.?\":{}|<>)." 
+        message: "Password is too weak. Use at least 8 characters, one uppercase letter, one number, and one special character (!@#$%^&*(),.?\":{}|<>)." 
       });
     }
 
@@ -110,11 +110,11 @@ const register = async (req, res) => {
     // 6. Clear OTP verification key
     await redisClient.del(`verified:${normalizedEmail}`);
 
-    return res.status(201).json({ message: "✅ User registered successfully." });
+    return res.status(201).json({ message: "User registered successfully." });
 
   } catch (err) {
-    console.error("❌ Registration Error:", err.message);
-    return res.status(500).json({ message: "❌ Internal server error. Please try again." });
+    console.error("Registration Error:", err.message);
+    return res.status(500).json({ message: "Internal server error. Please try again." });
   }
 };
 
@@ -134,7 +134,7 @@ const login = async (req, res) => {
 
     const token = generateToken(user); // JWT with expiry
 
-    // ✅ Set cookie for frontend usage
+    //Set cookie for frontend usage
     res.cookie("token", token, {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       httpOnly: true,
@@ -170,7 +170,7 @@ const logout = async (req, res) => {
     await redisClient.set(`token:${token}`, "Blocked");
     await redisClient.expireAt(`token:${token}`, payload.exp);
 
-    // ✅ Must match original cookie attributes to clear
+    //Must match original cookie attributes to clear
     res.clearCookie("token", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -225,7 +225,7 @@ const deleteProfile = async (req, res) => {
     res.status(500).send("Internal server error");
   }
 };
-
+  
 // -------------------- Get All Users --------------------
 const getAllUsers = async (req, res) => {
   try {

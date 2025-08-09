@@ -36,7 +36,7 @@ const userSchema = new Schema({
     default: 'user'
   },
 
-  // ✅ Removed unique constraint from here
+
   missionCompleted: [{
     type: Schema.Types.ObjectId,
     ref: 'mission',
@@ -52,6 +52,10 @@ const userSchema = new Schema({
   totalReward: {
     type: Number,
     default: 0
+  },
+  level:{
+    levelNo:Number,
+    exp:Number
   }
 
 }, {

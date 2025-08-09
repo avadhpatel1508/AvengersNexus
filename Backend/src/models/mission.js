@@ -8,8 +8,8 @@ const missionSchema = new Schema({
   },
   description: {
     type: String,
-    minLength: 10,
-    maxLength: 100,
+    minLength: 50,
+    maxLength: 300,
     required: true
   },
   Location: {

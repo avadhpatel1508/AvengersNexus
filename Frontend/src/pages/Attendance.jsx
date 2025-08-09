@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-import axiosClient from '../utils/axiosClient';
+import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaCalendarAlt } from 'react-icons/fa';
 import AdminNavbar from '../components/AdminNavbar';
@@ -69,7 +69,10 @@ const Attendance = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await axiosClient.get(`/attendance/date/${formattedDate}`);
+      const response = await axios.get(
+        `http://localhost:4000/attendance/date/${formattedDate}`,
+        { withCredentials: true }
+      );
       const data = Array.isArray(response.data.attendance) ? response.data.attendance : [];
       setAttendanceData(data);
     } catch (err) {
@@ -83,8 +86,9 @@ const Attendance = () => {
   const fetchDailyCounts = async () => {
     setGraphLoading(true);
     try {
-      const response = await axiosClient.get(
-        `/attendance/daily-counts?month=${month + 1}&year=${year}`
+      const response = await axios.get(
+        `http://localhost:4000/attendance/daily-counts?month=${month + 1}&year=${year}`,
+        { withCredentials: true }
       );
       console.log('Daily Counts API Response:', response.data);
       const data = Array.isArray(response.data) ? response.data : [];
@@ -102,8 +106,9 @@ const Attendance = () => {
     const fetchMonthlyAttendance = async () => {
       setGraphLoading(true);
       try {
-        const res = await axiosClient.get(
-          `/attendance/monthly-summary?month=${month + 1}&year=${year}`
+        const res = await axios.get(
+          `http://localhost:4000/attendance/monthly-summary?month=${month + 1}&year=${year}`,
+          { withCredentials: true }
         );
         console.log('Monthly Data API Response:', res.data);
         const data = Array.isArray(res.data.summary) ? res.data.summary : [];
@@ -160,16 +165,10 @@ const Attendance = () => {
     [attendanceData]
   );
 
-  // Dynamic chart margins based on screen size
-  const chartMargins = {
-    top: 20,
-    right: window.innerWidth <= 640 ? 10 : 30,
-    left: window.innerWidth <= 640 ? 0 : 20,
-    bottom: 5,
-  };
+  console.log('Pie Data:', pieData);
 
   return (
-    <div className="bg-black text-white relative overflow-x-hidden">
+    <div className="bg-black text-white relative overflow-hidden">
       {/* Preloader */}
       <AnimatePresence>
         {(!isLoaded || graphLoading || loading) && (
@@ -209,13 +208,9 @@ const Attendance = () => {
             <rect width="100" height="100" fill="url(#heroGrad)" />
           </svg>
         </div>
-        <div className="absolute inset-0">
-          <div className="absolute top-0 left-1/4 w-1 h-full bg-gradient-to-b from-red-500/30 via-transparent to-transparent transform rotate-12 animate-pulse"></div>
-          <div className="absolute top-0 right-1/3 w-1 h-full bg-gradient-to-b from-blue-500/30 via-transparent to-transparent transform -rotate-12 animate-pulse delay-1000"></div>
-          <div className="absolute top-0 left-2/3 w-1 h-full bg-gradient-to-b from-white/20 via-transparent to-transparent transform rotate-6 animate-pulse delay-2000"></div>
-        </div>
+        {/* Disable mouse-following effect on mobile to improve performance */}
         <motion.div
-          className="absolute w-96 h-96 rounded-full"
+          className="absolute w-96 h-96 rounded-full hidden md:block"
           style={{
             left: mousePosition.x - 192,
             top: mousePosition.y - 192,
@@ -224,11 +219,12 @@ const Attendance = () => {
           }}
           transition={{ type: 'spring', stiffness: 20, damping: 30 }}
         />
+        {/* Simplify background animations for mobile */}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-5">
-          <div className="w-[60vw] max-w-[350px] h-[60vw] max-h-[350px] border-8 border-white rounded-full flex items-center justify-center animate-spin-very-slow">
-            <div className="w-64 h-64 border-8 border-red-500 rounded-full flex items-center justify-center">
-              <div className="w-32 h-32 border-8 border-blue-500 rounded-full flex items-center justify-center">
-                <div className="text-4xl sm:text-6xl text-white">★</div>
+          <div className="w-[60vw] max-w-[300px] h-[60vw] max-h-[300px] border-4 border-white rounded-full flex items-center justify-center animate-spin-very-slow">
+            <div className="w-48 h-48 border-4 border-red-500 rounded-full flex items-center justify-center">
+              <div className="w-24 h-24 border-4 border-blue-500 rounded-full flex items-center justify-center">
+                <div className="text-2xl sm:text-4xl text-white">★</div>
               </div>
             </div>
           </div>
@@ -237,23 +233,23 @@ const Attendance = () => {
 
       {user?.role === 'admin' ? <AdminNavbar /> : <UserNavbar />}
 
-      <div className="relative z-10 p-4 sm:p-8 py-16 min-h-[120vh] w-full box-border overflow-x-hidden">
+      <div className="relative z-10 p-4 sm:p-6 md:p-8 lg:p-12 min-h-screen">
         <motion.div
-          className="flex justify-center gap-6 mb-8"
+          className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-6 mb-6 sm:mb-8"
           variants={containerVariants}
           initial="hidden"
           animate={isLoaded ? 'visible' : 'hidden'}
         >
           <motion.button
-            className={`relative px-6 py-3 rounded-lg font-semibold ${
+            className={`relative px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-semibold text-sm sm:text-base ${
               viewMode === 'calendar'
                 ? 'bg-gradient-to-r from-red-500 to-blue-500 text-white shadow-lg'
                 : 'bg-white/30 text-gray-300 hover:bg-white/50'
             }`}
             onClick={() => setViewMode('calendar')}
             variants={itemVariants}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
             Calendar View
             {viewMode === 'calendar' && (
@@ -264,15 +260,15 @@ const Attendance = () => {
             )}
           </motion.button>
           <motion.button
-            className={`relative px-6 py-3 rounded-lg font-semibold ${
+            className={`relative px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-semibold text-sm sm:text-base ${
               viewMode === 'graph'
                 ? 'bg-gradient-to-r from-red-500 to-blue-500 text-white shadow-lg'
                 : 'bg-white/30 text-gray-300 hover:bg-white/50'
             }`}
             onClick={() => setViewMode('graph')}
             variants={itemVariants}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
             Graph View
             {viewMode === 'graph' && (
@@ -286,18 +282,18 @@ const Attendance = () => {
 
         {viewMode === 'calendar' && (
           <motion.div
-            className="w-full mx-auto"
+            className="max-w-full sm:max-w-3xl lg:max-w-4xl mx-auto"
             variants={containerVariants}
             initial="hidden"
             animate={isLoaded ? 'visible' : 'hidden'}
           >
             <motion.div
-              className="flex justify-center gap-4 mb-6 flex-wrap"
+              className="flex flex-col sm:flex-row justify-center gap-4 mb-4 sm:mb-6"
               variants={itemVariants}
             >
               <motion.button
                 onClick={() => setShowCalendar(!showCalendar)}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-red-500 to-blue-500 text-white font-semibold rounded-lg"
+                className="flex items-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-red-500 to-blue-500 text-white font-semibold rounded-lg text-sm sm:text-base"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -305,7 +301,7 @@ const Attendance = () => {
               </motion.button>
               <motion.button
                 onClick={fetchAttendance}
-                className="px-6 py-3 bg-gradient-to-r from-red-500 to-blue-500 text-white font-semibold rounded-lg"
+                className="px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-red-500 to-blue-500 text-white font-semibold rounded-lg text-sm sm:text-base"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -315,10 +311,10 @@ const Attendance = () => {
 
             {showCalendar && (
               <motion.div
-                className="flex justify-center mb-6"
+                className="flex justify-center mb-4 sm:mb-6"
                 variants={itemVariants}
               >
-                <div className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-6 border border-white/20 shadow-2xl perspective-1000 w-full max-w-md">
+                <div className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-4 sm:p-6 border border-white/20 shadow-2xl perspective-1000 w-full max-w-[90vw] sm:max-w-md">
                   <motion.div
                     className="relative"
                     whileHover={{ rotateY: 5, rotateX: 2 }}
@@ -327,7 +323,7 @@ const Attendance = () => {
                     <Calendar
                       onChange={setSelectedDate}
                       value={selectedDate}
-                      className="rounded-lg p-4 bg-white text-black w-full"
+                      className="rounded-lg p-2 sm:p-4 bg-white text-black w-full text-sm sm:text-base"
                     />
                   </motion.div>
                 </div>
@@ -335,7 +331,7 @@ const Attendance = () => {
             )}
 
             <motion.p
-              className="text-center text-gray-300 mb-8 text-lg"
+              className="text-center text-gray-300 mb-6 sm:mb-8 text-sm sm:text-lg"
               variants={itemVariants}
             >
               <strong>Selected Date:</strong> {selectedDate.toDateString()}
@@ -343,41 +339,41 @@ const Attendance = () => {
 
             {loading ? (
               <motion.p
-                className="text-center text-white"
+                className="text-center text-white text-sm sm:text-base"
                 variants={itemVariants}
               >
                 Loading...
               </motion.p>
             ) : error ? (
               <motion.p
-                className="text-center text-red-400"
+                className="text-center text-red-400 text-sm sm:text-base"
                 variants={itemVariants}
               >
                 {error}
               </motion.p>
             ) : attendanceData.length === 0 ? (
               <motion.p
-                className="text-center text-gray-400"
+                className="text-center text-gray-400 text-sm sm:text-base"
                 variants={itemVariants}
               >
                 No attendance records found.
               </motion.p>
             ) : (
               <motion.ul
-                className="space-y-4 w-full"
+                className="space-y-4"
                 variants={containerVariants}
               >
                 {attendanceData.map((entry) => (
                   <motion.li
                     key={entry._id}
-                    className="flex justify-between items-center bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl p-4 rounded-xl border border-white/20 hover:scale-[1.02] transition-transform"
+                    className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl p-4 rounded-xl border border-white/20 hover:scale-[1.02] transition-transform"
                     variants={itemVariants}
                   >
-                    <span className="font-semibold text-white truncate">
+                    <span className="font-semibold text-white text-sm sm:text-base">
                       {entry.user?.firstName || 'Unknown'} ({entry.user?.emailId})
                     </span>
                     <span
-                      className={`font-bold ${
+                      className={`font-bold text-sm sm:text-base ${
                         entry.status === 'Present' ? 'text-green-400' : 'text-red-400'
                       }`}
                     >
@@ -392,20 +388,20 @@ const Attendance = () => {
 
         {viewMode === 'graph' && (
           <motion.div
-            className="w-full mx-auto"
+            className="max-w-full sm:max-w-3xl lg:max-w-4xl mx-auto"
             variants={containerVariants}
             initial="hidden"
             animate={isLoaded ? 'visible' : 'hidden'}
           >
             <motion.div
-              className="flex justify-center gap-4 mb-8 flex-wrap"
+              className="flex flex-col sm:flex-row justify-center gap-4 mb-6 sm:mb-8"
               variants={itemVariants}
             >
-              <div className="relative">
+              <div className="relative w-full sm:w-auto">
                 <motion.select
                   value={month}
                   onChange={(e) => setMonth(parseInt(e.target.value))}
-                  className="appearance-none px-6 py-3 bg-gray-800 text-gray-200 font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full max-w-xs"
+                  className="appearance-none px-4 py-2 sm:px-6 sm:py-3 bg-gray-800 text-gray-200 font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto text-sm sm:text-base"
                   whileHover={{ scale: 1.05 }}
                 >
                   {Array.from({ length: 12 }, (_, i) => (
@@ -416,12 +412,12 @@ const Attendance = () => {
                 </motion.select>
               </div>
 
-              <div className="relative">
+              <div className="relative w-full sm:w-auto">
                 <motion.input
                   type="number"
                   value={year}
                   onChange={(e) => setYear(parseInt(e.target.value))}
-                  className="px-6 py-3 bg-gray-800 text-gray-200 font-semibold rounded-lg w-32 text-center focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                  className="px-4 py-2 sm:px-6 sm:py-3 bg-gray-800 text-gray-200 font-semibold rounded-lg w-full sm:w-32 text-center focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none text-sm sm:text-base"
                   min="2000"
                   max="2100"
                   whileHover={{ scale: 1.05 }}
@@ -431,26 +427,26 @@ const Attendance = () => {
 
             {monthlyData.length > 0 ? (
               <motion.div
-                className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-4 sm:p-6 border border-white/20 shadow-2xl perspective-1000 mb-8 w-full box-border"
+                className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-4 sm:p-6 border border-white/20 shadow-2xl perspective-1000 mb-6 sm:mb-8"
                 whileHover={{ rotateY: 5, rotateX: 2 }}
                 style={{ transformStyle: 'preserve-3d' }}
                 variants={itemVariants}
               >
-                <h3 className="text-center text-white text-lg mb-4">Monthly Attendance Summary</h3>
-                <ResponsiveContainer width="100%" height={400}>
+                <h3 className="text-center text-white text-base sm:text-lg mb-4">Monthly Attendance Summary</h3>
+                <ResponsiveContainer width="100%" height={300} minHeight={200}>
                   <BarChart
                     data={monthlyData}
-                    margin={chartMargins}
+                    margin={{ top: 20, right: 10, left: 10, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.2)" />
-                    <XAxis dataKey="userName" stroke="#ffffff" tick={{ fontSize: window.innerWidth <= 640 ? 10 : 12 }} />
-                    <YAxis stroke="#ffffff" tick={{ fontSize: window.innerWidth <= 640 ? 10 : 12 }} />
+                    <XAxis dataKey="userName" stroke="#ffffff" fontSize={12} />
+                    <YAxis stroke="#ffffff" fontSize={12} />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: 'rgba(0,0,0,0.8)',
                         border: '1px solid rgba(255,255,255,0.2)',
                         borderRadius: '8px',
-                        fontSize: window.innerWidth <= 640 ? 12 : 14,
+                        fontSize: '12px',
                       }}
                     />
                     <Bar dataKey="daysPresent" fill="#3b82f6" />
@@ -459,7 +455,7 @@ const Attendance = () => {
               </motion.div>
             ) : (
               <motion.p
-                className="text-center text-gray-400 mb-8"
+                className="text-center text-gray-400 mb-6 sm:mb-8 text-sm sm:text-base"
                 variants={itemVariants}
               >
                 No monthly attendance data available.
@@ -468,31 +464,31 @@ const Attendance = () => {
 
             {dailyCounts.length > 0 ? (
               <motion.div
-                className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-4 sm:p-6 border border-white/20 shadow-2xl perspective-1000 mb-8 w-full box-border"
+                className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-4 sm:p-6 border border-white/20 shadow-2xl perspective-1000 mb-6 sm:mb-8"
                 whileHover={{ rotateY: 5, rotateX: 2 }}
                 style={{ transformStyle: 'preserve-3d' }}
                 variants={itemVariants}
               >
-                <h3 className="text-center text-white text-lg mb-4">Daily Attendance Counts</h3>
-                <ResponsiveContainer width="100%" height={400}>
+                <h3 className="text-center text-white text-base sm:text-lg mb-4">Daily Attendance Counts</h3>
+                <ResponsiveContainer width="100%" height={300} minHeight={200}>
                   <LineChart
                     data={dailyCounts}
-                    margin={chartMargins}
+                    margin={{ top: 20, right: 10, left: 10, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.2)" />
                     <XAxis
                       dataKey="date"
                       tickFormatter={(date) => date.split('-')[2]}
                       stroke="#ffffff"
-                      tick={{ fontSize: window.innerWidth <= 640 ? 10 : 12 }}
+                      fontSize={12}
                     />
-                    <YAxis stroke="#ffffff" tick={{ fontSize: window.innerWidth <= 640 ? 10 : 12 }} />
+                    <YAxis stroke="#ffffff" fontSize={12} />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: 'rgba(0,0,0,0.8)',
                         border: '1px solid rgba(255,255,255,0.2)',
                         borderRadius: '8px',
-                        fontSize: window.innerWidth <= 640 ? 12 : 14,
+                        fontSize: '12px',
                       }}
                     />
                     <Line
@@ -507,7 +503,7 @@ const Attendance = () => {
               </motion.div>
             ) : (
               <motion.p
-                className="text-center text-gray-400 mb-8"
+                className="text-center text-gray-400 mb-6 sm:mb-8 text-sm sm:text-base"
                 variants={itemVariants}
               >
                 No daily attendance data available.
@@ -516,24 +512,24 @@ const Attendance = () => {
 
             {pieData.length > 0 ? (
               <motion.div
-                className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-4 sm:p-6 border border-white/20 shadow-2xl perspective-1000 w-full box-border"
+                className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-4 sm:p-6 border border-white/20 shadow-2xl perspective-1000"
                 whileHover={{ rotateY: 5, rotateX: 2 }}
                 style={{ transformStyle: 'preserve-3d' }}
                 variants={itemVariants}
               >
-                <h3 className="text-center text-white text-lg mb-4">
+                <h3 className="text-center text-white text-base sm:text-lg mb-4">
                   Attendance Status for {selectedDate.toDateString()}
                 </h3>
-                <ResponsiveContainer width="100%" height={window.innerWidth <= 640 ? 300 : 400}>
-                  <PieChart margin={chartMargins}>
+                <ResponsiveContainer width="100%" height={300} minHeight={200}>
+                  <PieChart>
                     <Pie
                       data={pieData}
                       dataKey="value"
                       nameKey="name"
                       cx="50%"
                       cy="50%"
-                      outerRadius={window.innerWidth <= 640 ? 100 : 150}
-                      label={{ fontSize: window.innerWidth <= 640 ? 10 : 12 }}
+                      outerRadius={100}
+                      label={{ fontSize: 12 }}
                     >
                       <Cell fill="#3b82f6" />
                       <Cell fill="#ef4444" />
@@ -543,7 +539,7 @@ const Attendance = () => {
                         backgroundColor: 'rgba(0,0,0,0.8)',
                         border: '1px solid rgba(255,255,255,0.2)',
                         borderRadius: '8px',
-                        fontSize: window.innerWidth <= 640 ? 12 : 14,
+                        fontSize: '12px',
                       }}
                     />
                     <Legend
@@ -554,7 +550,7 @@ const Attendance = () => {
                         padding: '10px',
                         backgroundColor: 'rgba(0,0,0,0.5)',
                         borderRadius: '4px',
-                        fontSize: window.innerWidth <= 640 ? 12 : 14,
+                        fontSize: '12px',
                       }}
                     />
                   </PieChart>
@@ -562,7 +558,7 @@ const Attendance = () => {
               </motion.div>
             ) : (
               <motion.p
-                className="text-center text-gray-400 mb-8"
+                className="text-center text-gray-400 mb-6 sm:mb-8 text-sm sm:text-base"
                 variants={itemVariants}
               >
                 No attendance status data available for selected date.
@@ -571,7 +567,7 @@ const Attendance = () => {
           </motion.div>
         )}
 
-        <div className="h-32"></div>
+        <div className="h-24 sm:h-32"></div>
       </div>
 
       <style>{`
@@ -589,24 +585,19 @@ const Attendance = () => {
         .perspective-1000 {
           perspective: 1000px;
         }
-        body {
-          overflow-x: hidden;
+        /* Ensure calendar is responsive */
+        .react-calendar {
+          width: 100% !important;
+          max-width: 100%;
+          font-size: 0.875rem;
         }
         @media (max-width: 640px) {
-          .chart-container {
-            width: 100% !important;
-            overflow-x: hidden !important;
-            padding: 0 !important;
-            margin: 0 !important;
+          .react-calendar__tile {
+            padding: 8px !important;
+            font-size: 0.75rem;
           }
-          .chart-container > * {
-            max-width: 100% !important;
-            box-sizing: border-box !important;
-          }
-          .recharts-wrapper,
-          .recharts-surface {
-            width: 100% !important;
-            overflow: hidden !important;
+          .react-calendar__navigation__label {
+            font-size: 0.875rem;
           }
         }
       `}</style>

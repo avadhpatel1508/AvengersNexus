@@ -14,12 +14,12 @@ async function sendOtpMail(to, otp) {
   await transporter.sendMail({
     from: `"Team AvengerNexus" <${process.env.SMTP_USER}>`,
     to,
-    subject: `Your AvengerNexu Signup OTP - ${otp}`,
+    subject: `Your AvengerNexus Signup OTP - ${otp}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; background-color: #0c0c0c; color: #ffffff;">
         <div style="text-align: center; padding-bottom: 20px;">
         </div>
-        <h2 style="text-align: center; color: #ffffff;">Welcome to AvengerNexu!</h2>
+        <h2 style="text-align: center; color: #ffffff;">Welcome to AvengerNexus!</h2>
         <p style="font-size: 16px; color: #dddddd; text-align: center;">
           Your One-Time Password (OTP) for signup is:
         </p>

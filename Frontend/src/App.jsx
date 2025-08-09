@@ -21,7 +21,7 @@ import ChatPage from "./pages/chatPage";
 import ProfilePage from "./pages/profilePage";
 import { initializeSocket, resetSocket } from './socket/socket';
 import Features from "./pages/FirstPage";
-import UserProfile from "./pages/userProfile";
+import UserProfile from './pages/userProfile';
 
 // Protected route
 const ProtectedRoute = ({ element, role }) => {
@@ -95,6 +95,8 @@ function App() {
       <Route path="/posts" element={<PostsPage />} />
       <Route path="/attendance" element={<Attendance />} />
       <Route path="/avengers" element={<Avengers />} />
+      <Route path="/userProfile" element={<UserProfile />} />
+
 
       {/* Protected Routes */}
       <Route path="/your-missions" element={<ProtectedRoute element={<UserMission />} />} />

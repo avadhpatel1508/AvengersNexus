@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
@@ -24,6 +23,7 @@ function Signup() {
   const [emailError, setEmailError] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isLoaded, setIsLoaded] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -132,14 +132,16 @@ function Signup() {
       return;
     }
     try {
+      setIsSendingOtp(true);
+      setOtpSent(true); // Show OTP input immediately
       if (!emailValue) {
         setEmailError('Please enter a valid email first.');
+        setOtpSent(false); // Revert if email is invalid
         return;
       }
       const normalizedEmail = emailValue.trim().toLowerCase();
       const res = await axiosClient.post('/user/send-otp', { emailId: normalizedEmail });
       if (res.status === 200) {
-        setOtpSent(true);
         setOtp(['', '', '', '']);
         setOtpMessage('✅ OTP sent to your email! Please check your inbox.');
         setEmailError('');
@@ -148,11 +150,14 @@ function Signup() {
     } catch (err) {
       console.error('Send OTP failed:', err);
       const errMsg = err.response?.data?.message || 'Failed to send OTP. Please try again.';
+      setOtpSent(false); // Revert OTP input display on error
       if (errMsg.includes('exists') || errMsg.includes('Email is already registered')) {
         setEmailError('❌ This email is already registered. Please use a different email.');
       } else {
         setOtpMessage(errMsg);
       }
+    } finally {
+      setIsSendingOtp(false);
     }
   };
 
@@ -306,14 +311,14 @@ function Signup() {
                       <motion.button
                         type="button"
                         onClick={sendOtp}
-                        disabled={resendCooldown > 0 || isEmailVerified}
+                        disabled={resendCooldown > 0 || isEmailVerified || isSendingOtp}
                         className={`px-4 py-2 rounded-lg bg-gradient-to-r from-red-500 to-blue-500 text-white font-semibold ${
-                          resendCooldown > 0 || isEmailVerified ? 'opacity-50' : ''
+                          resendCooldown > 0 || isEmailVerified || isSendingOtp ? 'opacity-50' : ''
                         } shadow-lg`}
                         whileHover={{ scale: 1.05, boxShadow: '0 0 15px rgba(255,255,255,0.3)' }}
                         whileTap={{ scale: 0.95 }}
                       >
-                        {otpSent && resendCooldown > 0 ? `Resend (${resendCooldown}s)` : otpSent ? 'Resend OTP' : 'Verify'}
+                        {isSendingOtp ? 'Sending...' : otpSent && resendCooldown > 0 ? `Resend (${resendCooldown}s)` : otpSent ? 'Resend OTP' : 'Verify'}
                       </motion.button>
                     )}
                     {isEmailVerified && <span className="px-4 py-2 text-green-400 font-semibold">Verified</span>}

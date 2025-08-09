@@ -5,7 +5,7 @@ const AttendanceHistory = ({ userId }) => {
   const [records, setRecords] = useState([]);
 
   useEffect(() => {
-    axios.get(`http://localhost:8080/attendance/user/${userId}`, { withCredentials: true })
+    axios.get(`http://localhost:4000/attendance/user/${userId}`, { withCredentials: true })
       .then(res => setRecords(res.data.attendance))
       .catch(err => console.log(err));
   }, [userId]);

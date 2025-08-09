@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../authSlice';
+import { useNavigate } from 'react-router';
 import { useState } from 'react';
 
 function UserNavbar() {
@@ -10,6 +11,8 @@ function UserNavbar() {
 
     const handleLogout = () => {
         dispatch(logoutUser());
+        resetSocket(); 
+        navigate('/login');
     };
 
     const menuItems = [

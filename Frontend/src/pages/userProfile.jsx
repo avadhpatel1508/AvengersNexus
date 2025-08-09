@@ -1,60 +1,78 @@
 import { useEffect, useState } from 'react';
-import axiosClient from '../utils/axiosClient';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router';
+import axiosClient from '../utils/axiosClient';
 import UserNavbar from '../components/UserNavbar';
 import Footer from '../components/Footer';
 import Loader from './Loader';
+import { logoutUser } from '../authSlice';
+import { resetSocket } from '../socket/socket';
 
 const UserProfile = () => {
-  const user = useSelector((state) => state.auth?.user);
-  const [attendance, setAttendance] = useState([]);
-  const [monthlySummary, setMonthlySummary] = useState([]);
+  const [user, setUser] = useState(null);
   const [missionStats, setMissionStats] = useState(null);
   const [completedMissions, setCompletedMissions] = useState([]);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState('');
-  const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [year, setYear] = useState(new Date().getFullYear());
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
-  const API_BASE_URL = 'http://localhost:4000';
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!user?._id) {
-        setError('User not found');
-        setIsLoaded(true);
-        return;
-      }
-
       try {
         setIsLoaded(false);
+        const token = localStorage.getItem('token');
+        if (!token) {
+          setError('Authentication token is missing');
+          setIsLoaded(true);
+          return;
+        }
 
-        // Fetch attendance history
-        const attendanceResponse = await axiosClient.get(`${API_BASE_URL}/attendance/${user._id}`);
-        setAttendance(Array.isArray(attendanceResponse.data.attendance) ? attendanceResponse.data.attendance : []);
-
-        // Fetch monthly summary
-        const summaryResponse = await axiosClient.get(
-          `${API_BASE_URL}/attendance/monthly-summary?month=${month}&year=${year}`
-        );
-        setMonthlySummary(Array.isArray(summaryResponse.data.summary) ? summaryResponse.data.summary : []);
+        // Fetch user profile
+        const userResponse = await axiosClient.get('/user/check', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        setUser(userResponse.data.user);
 
         // Fetch mission stats
-        const missionStatsResponse = await axiosClient.get(
-          `${API_BASE_URL}/mission/missionStats/${user._id}`
-        );
-        setMissionStats(missionStatsResponse.data);
+        try {
+          const missionStatsResponse = await axiosClient.get(
+            `/mission/missionStats/${userResponse.data.user._id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          setMissionStats(missionStatsResponse.data);
+        } catch (statsErr) {
+          console.error('Error fetching mission stats:', statsErr.response?.data || statsErr.message);
+          setMissionStats({ assignedMissions: 0, completedMissions: 0, totalMissions: 0 });
+        }
 
         // Fetch completed missions
-        const missionsResponse = await axiosClient.get(
-          `${API_BASE_URL}/mission/missionCompletedByUser`
-        );
-        setCompletedMissions(Array.isArray(missionsResponse.data) ? missionsResponse.data : []);
+        try {
+          const missionsResponse = await axiosClient.get(
+            '/mission/missionCompletedByUser',
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          setCompletedMissions(Array.isArray(missionsResponse.data) ? missionsResponse.data : []);
+        } catch (missionsErr) {
+          console.error('Error fetching completed missions:', missionsErr.response?.data || missionsErr.message);
+          setCompletedMissions([]);
+        }
       } catch (err) {
         console.error('Error fetching profile data:', err.response?.data || err.message);
-        setError('Failed to load profile data.');
+        setError(err.response?.data?.message || 'Failed to load profile data.');
       } finally {
         setIsLoaded(true);
       }
@@ -67,20 +85,17 @@ const UserProfile = () => {
     };
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, [user, month, year]);
+  }, []);
 
-  const handleLogout = async () => {
-    try {
-      await axiosClient.post(`${API_BASE_URL}/user/logout`);
-      localStorage.removeItem('token');
-      window.location.href = '/login';
-    } catch (err) {
-      setError('Logout failed');
-    }
+  const handleLogout = () => {
+    dispatch(logoutUser());
+    resetSocket();
+    navigate('/login');
   };
 
-  const handleMonthChange = (e) => setMonth(e.target.value);
-  const handleYearChange = (e) => setYear(e.target.value);
+  const handleRewardClick = () => {
+    navigate('/your-reward');
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -202,6 +217,12 @@ const UserProfile = () => {
                       <p className="text-white font-semibold">{user.firstName}</p>
                       <p className="text-gray-400">{user.emailId}</p>
                       <p className="text-gray-400">Role: {user.role}</p>
+                      <p
+                        className="text-gray-400 cursor-pointer hover:text-blue-400"
+                        onClick={handleRewardClick}
+                      >
+                        Total Rewards: {user.totalReward || 0}
+                      </p>
                       <button
                         onClick={handleLogout}
                         className="mt-2 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded"
@@ -214,7 +235,7 @@ const UserProfile = () => {
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/5 to-transparent animate-pulse"></div>
               </motion.div>
 
-              {/* Attendance History */}
+              {/* Dummy Attendance History */}
               <motion.div
                 className="bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/20 shadow-2xl perspective-1000"
                 variants={itemVariants}
@@ -233,35 +254,21 @@ const UserProfile = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {attendance.length > 0 ? (
-                        attendance.map((record) => (
-                          <tr key={record._id} className="border-t border-white/20">
-                            <td className="p-3 text-gray-300">{new Date(record.date).toLocaleDateString()}</td>
-                            <td className="p-3">
-                              <span
-                                className={
-                                  record.status === 'Present' ? 'text-green-400 font-bold' : 'text-yellow-400 font-bold'
-                                }
-                              >
-                                {record.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="2" className="p-3 text-center text-gray-400">
-                            No attendance records found.
-                          </td>
-                        </tr>
-                      )}
+                      <tr className="border-t border-white/20">
+                        <td className="p-3 text-gray-300">08/01/2025</td>
+                        <td className="p-3 text-green-400 font-bold">Present</td>
+                      </tr>
+                      <tr className="border-t border-white/20">
+                        <td className="p-3 text-gray-300">08/02/2025</td>
+                        <td className="p-3 text-yellow-400 font-bold">Absent</td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/5 to-transparent animate-pulse"></div>
               </motion.div>
 
-              {/* Monthly Attendance Summary */}
+              {/* Dummy Monthly Attendance Summary */}
               <motion.div
                 className="bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/20 shadow-2xl perspective-1000"
                 variants={itemVariants}
@@ -273,41 +280,20 @@ const UserProfile = () => {
                 </h3>
                 <div className="flex mb-4">
                   <select
-                    value={month}
-                    onChange={handleMonthChange}
                     className="mr-2 bg-gray-700/50 text-white p-2 rounded border border-white/20"
                   >
-                    {[...Array(12)].map((_, i) => (
-                      <option key={i + 1} value={i + 1}>
-                        {i + 1}
-                      </option>
-                    ))}
+                    <option>8</option>
                   </select>
                   <select
-                    value={year}
-                    onChange={handleYearChange}
                     className="bg-gray-700/50 text-white p-2 rounded border border-white/20"
                   >
-                    {[...Array(5)].map((_, i) => (
-                      <option key={i} value={year - 2 + i}>
-                        {year - 2 + i}
-                      </option>
-                    ))}
+                    <option>2025</option>
                   </select>
                 </div>
                 <div className="text-gray-300">
-                  {monthlySummary.length > 0 ? (
-                    monthlySummary.map((summary) => (
-                      <div key={summary.userName} className="mb-2">
-                        <p>
-                          <span className="text-white font-semibold">{summary.userName}:</span>{' '}
-                          {summary.daysPresent} days present
-                        </p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-400">No data available for this period</p>
-                  )}
+                  <p>
+                    <span className="text-white font-semibold">John Doe:</span> 20 days present
+                  </p>
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/5 to-transparent animate-pulse"></div>
               </motion.div>
@@ -325,12 +311,20 @@ const UserProfile = () => {
                 {missionStats ? (
                   <div className="space-y-2">
                     <p>
-                      <span className="text-white font-semibold">Total Missions:</span>{' '}
-                      <span className="text-gray-300">{missionStats.totalMissions}</span>
+                      <span className="text-white font-semibold">📋 Assigned Missions:</span>{' '}
+                      <span className="text-gray-400">{missionStats.assignedMissions || 0}</span>
                     </p>
                     <p>
-                      <span className="text-white font-semibold">Completed Missions:</span>{' '}
-                      <span className="text-gray-300">{missionStats.completedMissions}</span>
+                      <span className="text-white font-semibold">🔄 Ongoing Missions:</span>{' '}
+                      <span className="text-blue-400">{(missionStats.assignedMissions || 0) - (missionStats.completedMissions || 0)}</span>
+                    </p>
+                    <p>
+                      <span className="text-white font-semibold">✅ Completed Missions:</span>{' '}
+                      <span className="text-green-400">{missionStats.completedMissions || 0}</span>
+                    </p>
+                    <p>
+                      <span className="text-white font-semibold">📊 Total Missions:</span>{' '}
+                      <span className="text-yellow-400">{missionStats.totalMissions || 0}</span>
                     </p>
                   </div>
                 ) : (
