@@ -46,6 +46,11 @@ const Leaderboard = () => {
     visible: { y: 0, opacity: 1, transition: { duration: 0.6, ease: 'easeOut' } }
   };
 
+  const trophyVariants = {
+    hidden: { scale: 0, rotate: -180 },
+    visible: { scale: 1, rotate: 0, transition: { duration: 0.8, type: 'spring' } }
+  };
+
   if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black text-white">
@@ -61,6 +66,9 @@ const Leaderboard = () => {
       </div>
     );
   }
+
+  const topThree = users.slice(0, 3);
+  const remainingUsers = users.slice(3);
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
@@ -109,6 +117,85 @@ const Leaderboard = () => {
           Leaderboard
         </motion.h1>
 
+        {topThree.length > 0 && (
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="flex justify-center items-end mb-16 space-x-4 md:space-x-8 relative"
+          >
+            {/* Trophy behind the first place */}
+            {topThree[0] && (
+              <motion.div
+                className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-9xl opacity-50 z-0"
+                variants={trophyVariants}
+              >
+                🏆
+              </motion.div>
+            )}
+
+            {/* Second Place */}
+            {topThree[1] && (
+              <motion.div
+                variants={itemVariants}
+                className="flex flex-col items-center"
+              >
+                <div className="text-6xl md:text-7xl mb-2">🦸‍♂️</div>
+                <div className="w-24 h-24 md:w-32 md:h-32 bg-silver rounded-full flex items-center justify-center mb-2 border-4 border-silver">
+                  <span className="text-4xl md:text-5xl font-bold text-white">2</span>
+                </div>
+                <div className="text-center bg-white/10 p-4 rounded-lg w-32 md:w-48 shadow-lg">
+                  <p className="font-bold text-lg">{topThree[1].firstName} {topThree[1].lastName || ''}</p>
+                  <p className="text-sm text-gray-300">EXP: {topThree[1].exp ?? 0}</p>
+                  <p className="text-sm text-gray-300">Reward: {topThree[1].totalReward ?? 0}</p>
+                  <p className="text-sm text-gray-300">Missions: {topThree[1].missionCompleted ? topThree[1].missionCompleted.length : 0}</p>
+                </div>
+                <div className="w-32 md:w-48 h-24 bg-silver/70 rounded-t-lg shadow-md"></div>
+              </motion.div>
+            )}
+
+            {/* First Place */}
+            {topThree[0] && (
+              <motion.div
+                variants={itemVariants}
+                className="flex flex-col items-center relative z-10"
+              >
+                <div className="text-7xl md:text-8xl mb-2">🦸‍♂️</div>
+                <div className="w-28 h-28 md:w-36 md:h-36 bg-gold rounded-full flex items-center justify-center mb-2 border-4 border-gold">
+                  <span className="text-5xl md:text-6xl font-bold text-white">1</span>
+                </div>
+                <div className="text-center bg-white/10 p-4 rounded-lg w-36 md:w-56 shadow-lg">
+                  <p className="font-bold text-lg">{topThree[0].firstName} {topThree[0].lastName || ''}</p>
+                  <p className="text-sm text-gray-300">EXP: {topThree[0].exp ?? 0}</p>
+                  <p className="text-sm text-gray-300">Reward: {topThree[0].totalReward ?? 0}</p>
+                  <p className="text-sm text-gray-300">Missions: {topThree[0].missionCompleted ? topThree[0].missionCompleted.length : 0}</p>
+                </div>
+                <div className="w-36 md:w-56 h-32 bg-gold/70 rounded-t-lg shadow-md"></div>
+              </motion.div>
+            )}
+
+            {/* Third Place */}
+            {topThree[2] && (
+              <motion.div
+                variants={itemVariants}
+                className="flex flex-col items-center"
+              >
+                <div className="text-6xl md:text-7xl mb-2">🦸‍♂️</div>
+                <div className="w-24 h-24 md:w-32 md:h-32 bg-bronze rounded-full flex items-center justify-center mb-2 border-4 border-bronze">
+                  <span className="text-4xl md:text-5xl font-bold text-white">3</span>
+                </div>
+                <div className="text-center bg-white/10 p-4 rounded-lg w-32 md:w-48 shadow-lg">
+                  <p className="font-bold text-lg">{topThree[2].firstName} {topThree[2].lastName || ''}</p>
+                  <p className="text-sm text-gray-300">EXP: {topThree[2].exp ?? 0}</p>
+                  <p className="text-sm text-gray-300">Reward: {topThree[2].totalReward ?? 0}</p>
+                  <p className="text-sm text-gray-300">Missions: {topThree[2].missionCompleted ? topThree[2].missionCompleted.length : 0}</p>
+                </div>
+                <div className="w-32 md:w-48 h-20 bg-bronze/70 rounded-t-lg shadow-md"></div>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -128,7 +215,20 @@ const Leaderboard = () => {
             </thead>
             <tbody>
               <AnimatePresence>
-                {users.length === 0 && (
+                {remainingUsers.length === 0 && users.length > 0 && (
+                  <motion.tr
+                    key="no-remaining"
+                    variants={itemVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="hidden"
+                  >
+                    <td colSpan="6" className="text-center py-10 text-gray-400">
+                      No additional users.
+                    </td>
+                  </motion.tr>
+                )}
+                {remainingUsers.length === 0 && users.length === 0 && (
                   <motion.tr
                     key="no-users"
                     variants={itemVariants}
@@ -141,7 +241,7 @@ const Leaderboard = () => {
                     </td>
                   </motion.tr>
                 )}
-                {users.map((user, idx) => (
+                {remainingUsers.map((user, idx) => (
                   <motion.tr
                     key={user._id}
                     variants={itemVariants}
@@ -152,7 +252,7 @@ const Leaderboard = () => {
                       idx % 2 === 0 ? 'bg-white/5' : 'bg-transparent'
                     }`}
                   >
-                    <td className="px-3 py-2 text-xs sm:text-sm md:px-6 md:py-3 font-semibold">{idx + 1}</td>
+                    <td className="px-3 py-2 text-xs sm:text-sm md:px-6 md:py-3 font-semibold">{idx + 4}</td>
                     <td className="px-3 py-2 text-xs sm:text-sm md:px-6 md:py-3">
                       {user.firstName} {user.lastName || ''}
                     </td>
@@ -180,6 +280,33 @@ const Leaderboard = () => {
         ::-webkit-scrollbar-thumb {
           background: linear-gradient(to bottom, #dc2626, #2563eb);
           border-radius: 20px;
+        }
+        .bg-gold {
+          background-color: #ffd700;
+        }
+        .border-gold {
+          border-color: #ffd700;
+        }
+        .bg-silver {
+          background-color: #c0c0c0;
+        }
+        .border-silver {
+          border-color: #c0c0c0;
+        }
+        .bg-bronze {
+          background-color: #cd7f32;
+        }
+        .border-bronze {
+          border-color: #cd7f32;
+        }
+        .bg-gold\/70 {
+          background-color: rgba(255, 215, 0, 0.7);
+        }
+        .bg-silver\/70 {
+          background-color: rgba(192, 192, 192, 0.7);
+        }
+        .bg-bronze\/70 {
+          background-color: rgba(205, 127, 50, 0.7);
         }
       `}</style>
     </div>

@@ -86,56 +86,79 @@ attendanceRouter.get('/check-active', async (req, res) => {
 
 attendanceRouter.get('/monthlysummary', userMiddleware, attendanceController.getMonthlySummary);
 
-attendanceRouter.get('/days-present-monthly', userMiddleware, async (req, res) => {
+
+
+attendanceRouter.get('/percentage/:userId', userMiddleware, async (req, res) => {
   try {
-    const { userId, month, year } = req.query;
+    const { userId } = req.params;
+    const { month, year } = req.query;
 
-    if (!userId) {
-      return res.status(400).json({ success: false, message: 'userId is required' });
-    }
-    if (!month || !year) {
-      return res.status(400).json({ success: false, message: 'month and year are required' });
-    }
-
-    const monthNum = parseInt(month); // 1 - 12
-    const yearNum = parseInt(year);
-
-    if (isNaN(monthNum) || monthNum < 1 || monthNum > 12 || isNaN(yearNum)) {
-      return res.status(400).json({ success: false, message: 'Invalid month or year' });
-    }
-
-    // Permissions check: user can only query their own data or admins can query any user
+    // Authorization: user can only access own data or admin can access any
     if (req.user._id.toString() !== userId && req.user.role !== 'admin') {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
 
-    // Get first and last date of month
-    const startDate = new Date(Date.UTC(yearNum, monthNum - 1, 1, 0, 0, 0));
-    const endDate = new Date(Date.UTC(yearNum, monthNum, 0, 23, 59, 59, 999));
+    // Validate month/year
+    const monthNum = parseInt(month, 10);
+    const yearNum = parseInt(year, 10);
+    if (
+      isNaN(monthNum) ||
+      monthNum < 1 ||
+      monthNum > 12 ||
+      isNaN(yearNum) ||
+      yearNum < 2000
+    ) {
+      return res.status(400).json({ success: false, message: 'Invalid month or year' });
+    }
 
-    // Query to count present days for user in the month
-    const daysPresent = await Attendance.countDocuments({
+    // Calculate start and end dates of the month
+    const startDate = new Date(yearNum, monthNum - 1, 1);
+    const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999); // last day of month
+
+    // Fetch attendance records for user in that month
+    const attendanceRecords = await Attendance.find({
       user: userId,
-      status: 'Present',
       date: { $gte: startDate, $lte: endDate },
     });
+
+    // Define total expected attendance days in this month
+    // (You can change this logic as needed)
+    // Example: count weekdays (Mon-Fri) in the month
+    const countWeekdays = (year, month) => {
+      let count = 0;
+      const date = new Date(year, month - 1, 1);
+      while (date.getMonth() === month - 1) {
+        const day = date.getDay();
+        if (day !== 0 && day !== 6) count++; // Mon-Fri
+        date.setDate(date.getDate() + 1);
+      }
+      return count;
+    };
+    const totalExpectedDays = countWeekdays(yearNum, monthNum);
+
+    // Count present days (assuming status 'present' means attended)
+    const presentDays = attendanceRecords.filter(
+      (record) => record.status.toLowerCase() === 'present'
+    ).length;
+
+    // Calculate attendance percentage
+    const percentage = totalExpectedDays
+      ? (presentDays / totalExpectedDays) * 100
+      : 0;
 
     res.status(200).json({
       success: true,
       userId,
       month: monthNum,
       year: yearNum,
-      daysPresent,
+      totalExpectedDays,
+      presentDays,
+      attendancePercentage: percentage.toFixed(2),
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({
-      success: false,
-      message: 'Server error',
-      error: err.message,
-    });
+    console.error('Error calculating attendance percentage:', err);
+    res.status(500).json({ success: false, message: 'Server error', error: err.message });
   }
 });
-
 
 module.exports = attendanceRouter;

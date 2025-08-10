@@ -17,10 +17,6 @@ const UserProfile = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState('');
   const [attendanceError, setAttendanceError] = useState('');
-  const [monthlyAttendance, setMonthlyAttendance] = useState(null);
-  const [monthlyAttendanceError, setMonthlyAttendanceError] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
   const dispatch = useDispatch();
@@ -52,24 +48,6 @@ const UserProfile = () => {
     }
   };
 
-  const fetchMonthlyAttendance = async (userId, month, year) => {
-    try {
-      setMonthlyAttendanceError('');
-      setMonthlyAttendance(null); // clear previous while loading
-      const { data } = await axiosClient.get(
-        `/attendance/days-present-monthly?userId=${userId}&month=${month}&year=${year}`
-      );
-      if (data?.success) {
-        setMonthlyAttendance(data.daysPresent);
-      } else {
-        setMonthlyAttendanceError('Failed to fetch monthly attendance summary.');
-      }
-    } catch (err) {
-      console.error('❌ Error fetching monthly attendance:', err);
-      setMonthlyAttendanceError('Something went wrong fetching monthly attendance.');
-    }
-  };
-
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -91,11 +69,6 @@ const UserProfile = () => {
 
         if (userResponse.data.user._id) {
           await fetchAttendance(userResponse.data.user._id);
-          await fetchMonthlyAttendance(
-            userResponse.data.user._id,
-            selectedMonth,
-            selectedYear
-          );
         }
 
         // Fetch mission stats
@@ -149,13 +122,6 @@ const UserProfile = () => {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  // Refetch monthly attendance when user or selected month/year changes
-  useEffect(() => {
-    if (user && user._id) {
-      fetchMonthlyAttendance(user._id, selectedMonth, selectedYear);
-    }
-  }, [user, selectedMonth, selectedYear]);
-
   const handleLogout = () => {
     dispatch(logoutUser());
     resetSocket();
@@ -188,15 +154,6 @@ const UserProfile = () => {
       },
     },
   };
-
-  // Month options (1-12)
-  const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1);
-  // Year options: 2020 to currentYear + 2
-  const currentYear = new Date().getFullYear();
-  const yearOptions = [];
-  for (let y = 2020; y <= currentYear + 2; y++) {
-    yearOptions.push(y);
-  }
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
@@ -379,57 +336,6 @@ const UserProfile = () => {
                     )}
                   </tbody>
                 </table>
-              </motion.div>
-
-              {/* Monthly Attendance Summary */}
-              <motion.div
-                className="bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/20 shadow-2xl perspective-1000"
-                variants={itemVariants}
-                whileHover={{ rotateY: 5, rotateX: 2, scale: 1.05 }}
-                style={{ transformStyle: 'preserve-3d' }}
-              >
-                <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-red-500 via-white to-blue-500 bg-clip-text text-transparent">
-                  Monthly Attendance Summary
-                </h3>
-                <div className="flex mb-4">
-                  <select
-                    className="mr-2 bg-gray-700/50 text-white p-2 rounded border border-white/20"
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                  >
-                    {monthOptions.map((m) => (
-                      <option key={m} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    className="bg-gray-700/50 text-white p-2 rounded border border-white/20"
-                    value={selectedYear}
-                    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                  >
-                    {yearOptions.map((y) => (
-                      <option key={y} value={y}>
-                        {y}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="text-gray-300">
-                  {monthlyAttendanceError ? (
-                    <p className="text-red-400">{monthlyAttendanceError}</p>
-                  ) : monthlyAttendance !== null ? (
-                    <p>
-                      <span className="text-white font-semibold">
-                        {user ? user.firstName : 'User'}:
-                      </span>{' '}
-                      {monthlyAttendance} days present
-                    </p>
-                  ) : (
-                    <p>Loading...</p>
-                  )}
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/5 to-transparent animate-pulse"></div>
               </motion.div>
 
               {/* Mission Stats */}

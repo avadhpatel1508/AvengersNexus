@@ -429,43 +429,7 @@ const Attendance = () => {
               </div>
             </motion.div>
 
-            {monthlyData.length > 0 ? (
-              <motion.div
-                className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-4 sm:p-6 border border-white/20 shadow-2xl perspective-1000 mb-6 sm:mb-8"
-                whileHover={{ rotateY: 5, rotateX: 2 }}
-                style={{ transformStyle: 'preserve-3d' }}
-                variants={itemVariants}
-              >
-                <h3 className="text-center text-white text-base sm:text-lg mb-4">Monthly Attendance Summary</h3>
-                <ResponsiveContainer width="100%" height={300} minHeight={200}>
-                  <BarChart
-                    data={monthlyData}
-                    margin={{ top: 20, right: 10, left: 10, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.2)" />
-                    <XAxis dataKey="userName" stroke="#ffffff" fontSize={12} />
-                    <YAxis stroke="#ffffff" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'rgba(0,0,0,0.8)',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                      }}
-                    />
-                    <Bar dataKey="daysPresent" fill="#3b82f6" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </motion.div>
-            ) : (
-              <motion.p
-                className="text-center text-gray-400 mb-6 sm:mb-8 text-sm sm:text-base"
-                variants={itemVariants}
-              >
-                No monthly attendance data available.
-              </motion.p>
-            )}
-
+            
             {dailyCounts.length > 0 ? (
               <motion.div
                 className="relative bg-gradient-to-br from-slate-800/60 via-transparent to-slate-800/60 backdrop-blur-xl rounded-3xl p-4 sm:p-6 border border-white/20 shadow-2xl perspective-1000 mb-6 sm:mb-8"
