@@ -107,7 +107,7 @@ const Leaderboard = () => {
 
       <UserNavbar />
 
-      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <motion.h1
           className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-blue-500 mb-12 text-center"
           initial={{ opacity: 0, y: -40 }}
@@ -127,7 +127,7 @@ const Leaderboard = () => {
             {/* Trophy behind the first place */}
             {topThree[0] && (
               <motion.div
-                className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-9xl opacity-50 z-0"
+                className="absolute top-4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-9xl opacity-50 z-0"
                 variants={trophyVariants}
               >
                 🏆
