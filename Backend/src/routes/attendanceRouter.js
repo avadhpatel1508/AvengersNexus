@@ -4,7 +4,7 @@ const adminMiddleware = require('../middleware/adminMiddleware');
 const userMiddleware = require('../middleware/userMiddleware');
 const Attendance = require('../models/attendance');
 const attendanceController = require('../controllers/attendanceController');
-
+const moment = require('moment-timezone');
 attendanceRouter.get('/date/:date', userMiddleware, async (req, res) => {
   try {
     const inputDate = new Date(req.params.date);
@@ -57,20 +57,42 @@ attendanceRouter.post('/start', adminMiddleware, async (req, res) => {
   }
 });
 
+
 attendanceRouter.post('/submit', userMiddleware, async (req, res) => {
-  const { enteredOtp, sessionId } = req.body;
-  const result = await attendanceController.submitOtp(req.result._id, enteredOtp, sessionId);
-  res.status(result.success ? 200 : 400).json(result);
+  try {
+    const { enteredOtp, sessionId } = req.body;
+
+    // Get today's date in IST
+    const todayIST = moment().tz('Asia/Kolkata').format('YYYY-MM-DD');
+
+    // Pass today's IST date to your controller
+    const result = await attendanceController.submitOtp(
+      req.result._id,
+      enteredOtp,
+      sessionId,
+      todayIST
+    );
+
+    res.status(result.success ? 200 : 400).json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 attendanceRouter.post('/markAbsent', adminMiddleware, async (req, res) => {
   try {
-    await attendanceController.markAbsentForAll(req.body.sessionId);
+    // Get today's date in IST
+    const todayIST = moment().tz('Asia/Kolkata').format('YYYY-MM-DD');
+
+    // Pass today's IST date to your controller
+    await attendanceController.markAbsentForAll(req.body.sessionId, todayIST);
+
     res.status(200).json({ success: true, message: 'Absentees marked' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+
 
 attendanceRouter.post('/mark', userMiddleware, async (req, res) => {
   const userId = req.result._id;
