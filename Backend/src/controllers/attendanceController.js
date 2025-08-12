@@ -3,7 +3,7 @@ const User = require('../models/user');
 const redisClient = require('../config/redish');
 const { v4: uuidv4 } = require('uuid');
 const generateOtp = require('../utils/generateOtp');
-
+const moment = require('moment-timezone');
 // START ATTENDANCE (ADMIN)
 const startAttendance = async (io, adminId) => {
   try {
@@ -46,59 +46,78 @@ const startAttendance = async (io, adminId) => {
   }
 };
 
-// SUBMIT OTP (USER)
 const submitOtp = async (userId, enteredOtp, sessionId, io) => {
   try {
+    // Retrieve OTP from Redis
     const storedOtp = await redisClient.get(`otp:${sessionId}`);
-    if (!storedOtp) return { success: false, message: 'OTP expired' };
-
-    if (storedOtp !== enteredOtp)
+    if (!storedOtp) {
+      return { success: false, message: 'OTP expired' };
+    }
+    if (storedOtp !== enteredOtp) {
       return { success: false, message: 'Incorrect OTP' };
+    }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Always store and query date in IST as YYYY-MM-DD
+    const todayIST = moment().tz('Asia/Kolkata').format('YYYY-MM-DD');
 
+    // Ensure user exists
     const user = await User.findById(userId);
-    if (!user) return { success: false, message: 'User not found' };
+    if (!user) {
+      return { success: false, message: 'User not found' };
+    }
 
-    const existing = await Attendance.findOne({ user: userId, date: today });
+    // Check for existing attendance record for today
+    const existing = await Attendance.findOne({ user: userId, date: todayIST });
 
     if (existing) {
-      if (existing.status === 'Absent') {
+      if (existing.status.toLowerCase() === 'absent') {
+        // Update from absent to present
         existing.status = 'Present';
         existing.otpSessionId = sessionId;
         await existing.save();
 
+        // Emit update for live dashboards
         io.to(sessionId).emit('user-attended', {
           userId: user._id,
           name: user.firstName,
           email: user.emailId,
+          status: 'Present',
+          date: todayIST
         });
 
         return { success: true, message: 'Marked present (updated from Absent)' };
       }
-      return { success: false, message: 'Attendance already marked' };
+
+      if (existing.status.toLowerCase() === 'present') {
+        return { success: true, message: 'Already marked present for today' };
+      }
     }
 
+    // No record exists — create a new present record
     await Attendance.create({
       user: userId,
-      date: today,
+      date: todayIST,
       status: 'Present',
-      otpSessionId: sessionId,
+      otpSessionId: sessionId
     });
 
+    // Emit update for live dashboards
     io.to(sessionId).emit('user-attended', {
       userId: user._id,
       name: user.firstName,
       email: user.emailId,
+      status: 'Present',
+      date: todayIST
     });
 
     return { success: true, message: 'Marked present' };
+
   } catch (error) {
-    console.error('❌ Error in submitOtp:', error);
+    console.error('Error in submitOtp:', error);
     return { success: false, message: 'Internal server error' };
   }
 };
+
 
 // MARK ABSENT FOR ALL (after timeout)
 const markAbsentForAll = async (sessionId) => {

@@ -61,14 +61,14 @@ attendanceRouter.post('/submit', userMiddleware, async (req, res) => {
   try {
     const { enteredOtp, sessionId } = req.body;
 
-    // Get IST date at IST midnight
-    const todayIST = moment().tz('Asia/Kolkata').startOf('day').format('YYYY-MM-DD');
+    // Always calculate today's date in IST
+    const todayIST = moment().tz('Asia/Kolkata').format('YYYY-MM-DD');
 
     const result = await attendanceController.submitOtp(
       req.result._id,
       enteredOtp,
       sessionId,
-      todayIST
+      todayIST // Pass IST date string to controller
     );
 
     res.status(result.success ? 200 : 400).json(result);
@@ -79,7 +79,7 @@ attendanceRouter.post('/submit', userMiddleware, async (req, res) => {
 
 attendanceRouter.post('/markAbsent', adminMiddleware, async (req, res) => {
   try {
-    const todayIST = moment().tz('Asia/Kolkata').startOf('day').format('YYYY-MM-DD');
+    const todayIST = moment().tz('Asia/Kolkata').format('YYYY-MM-DD');
 
     await attendanceController.markAbsentForAll(req.body.sessionId, todayIST);
 
@@ -89,13 +89,22 @@ attendanceRouter.post('/markAbsent', adminMiddleware, async (req, res) => {
   }
 });
 
-
 attendanceRouter.post('/mark', userMiddleware, async (req, res) => {
-  const userId = req.result._id;
-  const { otp, sessionId } = req.body;
+  try {
+    const { otp, sessionId } = req.body;
+    const todayIST = moment().tz('Asia/Kolkata').format('YYYY-MM-DD');
 
-  const result = await attendanceController.submitOtp(userId, otp, sessionId);
-  res.status(result.success ? 200 : 400).json({ message: result.message });
+    const result = await attendanceController.submitOtp(
+      req.result._id,
+      otp,
+      sessionId,
+      todayIST
+    );
+
+    res.status(result.success ? 200 : 400).json({ message: result.message });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 attendanceRouter.get('/check-active', async (req, res) => {

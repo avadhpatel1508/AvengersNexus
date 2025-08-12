@@ -48,19 +48,44 @@ const AttendanceSubmit = () => {
     }
   };
 
+  // Load active session from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('activeAttendanceSession');
+    if (saved) {
+      const { otp, sessionId, expiresAt } = JSON.parse(saved);
+      const now = Date.now();
+      const remaining = Math.floor((expiresAt - now) / 1000);
+      if (remaining > 0) {
+        setReceivedOtp(otp);
+        setOtpSession(sessionId);
+        setOtpActive(true);
+        setTimer(remaining);
+        setSubmitted(false);
+      } else {
+        localStorage.removeItem('activeAttendanceSession');
+      }
+    }
+  }, []);
+
   useEffect(() => {
     initializeSocket();
     const socket = getSocket();
     if (!socket) return;
 
-    socket.on('attendance-started', (data) => {
-      setReceivedOtp(data.otp);
-      setOtpSession(data.sessionId);
+    socket.on('attendance-started', ({ otp, sessionId, expiresIn }) => {
+      const expiresAt = Date.now() + expiresIn * 1000;
+      setReceivedOtp(otp);
+      setOtpSession(sessionId);
       setOtpActive(true);
-      setTimer(data.expiresIn || 60);
+      setTimer(expiresIn || 60);
       setMessage('');
       setError('');
       setSubmitted(false);
+
+      localStorage.setItem(
+        'activeAttendanceSession',
+        JSON.stringify({ otp, sessionId, expiresAt })
+      );
     });
 
     socket.on('attendance-success', (data) => {
@@ -76,15 +101,21 @@ const AttendanceSubmit = () => {
     socket.emit('get-active-session');
 
     socket.on('active-session-data', ({ otp, sessionId, expiresAt }) => {
-      const timeLeft = Math.floor((expiresAt - Date.now()) / 1000);
-      if (timeLeft > 0) {
+      const now = Date.now();
+      const remainingTime = Math.floor((expiresAt - now) / 1000);
+      if (remainingTime > 0) {
         setReceivedOtp(otp);
         setOtpSession(sessionId);
         setOtpActive(true);
-        setTimer(timeLeft);
+        setTimer(remainingTime);
         setMessage('');
         setError('');
         setSubmitted(false);
+
+        localStorage.setItem(
+          'activeAttendanceSession',
+          JSON.stringify({ otp, sessionId, expiresAt })
+        );
       }
     });
 
@@ -96,12 +127,19 @@ const AttendanceSubmit = () => {
     };
   }, []);
 
+  // Timer logic same as AttendanceStart
   useEffect(() => {
     if (timer > 0) {
-      const interval = setInterval(() => setTimer((prev) => prev - 1), 1000);
-      return () => clearInterval(interval);
-    } else {
-      setOtpActive(false);
+      const countdown = setInterval(() => {
+        setTimer((prev) => {
+          if (prev === 1) {
+            setOtpActive(false);
+            localStorage.removeItem('activeAttendanceSession');
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(countdown);
     }
   }, [timer]);
 
@@ -161,7 +199,6 @@ const AttendanceSubmit = () => {
         <motion.div
           className="absolute w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl"
           style={{ left: mousePosition.x - 192, top: mousePosition.y - 192 }}
-          transition={{ type: 'spring', stiffness: 50, damping: 30 }}
         />
         <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-pink-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>

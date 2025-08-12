@@ -20,17 +20,42 @@ const AttendanceStart = ({ adminId, token }) => {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [absentMarked, setAbsentMarked] = useState(false);
 
+  // Load from localStorage in case of refresh
+  useEffect(() => {
+    const saved = localStorage.getItem('activeAttendanceSession');
+    if (saved) {
+      const { otp, sessionId, expiresAt } = JSON.parse(saved);
+      const now = Date.now();
+      const remaining = Math.floor((expiresAt - now) / 1000);
+      if (remaining > 0) {
+        setGeneratedOtp(otp);
+        setSessionId(sessionId);
+        setTimer(remaining);
+        setAttendanceStarted(true);
+        setAttendanceOver(false);
+      } else {
+        localStorage.removeItem('activeAttendanceSession');
+      }
+    }
+  }, []);
+
   useEffect(() => {
     initializeSocket(token);
     const socket = getSocket();
     if (!socket) return;
 
     socket.on('attendance-started', ({ otp, sessionId, expiresIn }) => {
+      const expiresAt = Date.now() + expiresIn * 1000;
       setGeneratedOtp(otp);
       setSessionId(sessionId);
       setTimer(expiresIn || 60);
       setAttendanceStarted(true);
       setAttendanceOver(false);
+
+      localStorage.setItem(
+        'activeAttendanceSession',
+        JSON.stringify({ otp, sessionId, expiresAt })
+      );
     });
 
     socket.on('active-session-data', ({ otp, sessionId, expiresAt }) => {
@@ -42,6 +67,11 @@ const AttendanceStart = ({ adminId, token }) => {
         setTimer(remainingTime);
         setAttendanceStarted(true);
         setAttendanceOver(false);
+
+        localStorage.setItem(
+          'activeAttendanceSession',
+          JSON.stringify({ otp, sessionId, expiresAt })
+        );
       }
     });
 
@@ -56,7 +86,7 @@ const AttendanceStart = ({ adminId, token }) => {
       socket.off('attendance-session-failed');
       socket.off('active-session-data');
     };
-  }, [token, adminId]);
+  }, [token, adminId, sessionId]);
 
   useEffect(() => {
     if (timer > 0) {
@@ -65,6 +95,7 @@ const AttendanceStart = ({ adminId, token }) => {
           if (prev === 1 && !attendanceOver) {
             setAttendanceOver(true);
             markAbsentUsers();
+            localStorage.removeItem('activeAttendanceSession');
           }
           return prev - 1;
         });
@@ -75,11 +106,10 @@ const AttendanceStart = ({ adminId, token }) => {
 
   const markAbsentUsers = async () => {
     try {
-      const res = await axiosClient.post('/attendance/markAbsent', { sessionId });
-      console.log('✔️ Absentees marked:', res.data);
+      await axiosClient.post('/attendance/markAbsent', { sessionId });
       setAbsentMarked(true);
     } catch (err) {
-      console.error('❌ Failed to mark absentees:', err);
+      console.error('Failed to mark absentees:', err);
     }
   };
 
@@ -138,7 +168,7 @@ const AttendanceStart = ({ adminId, token }) => {
       {/* Content */}
       <div className="relative z-10 p-4 sm:p-8 flex flex-col items-center justify-center min-h-screen gap-6">
         <motion.div
-          className="w-full max-w-md bg-black/40 backdrop-blur-md p-6 rounded-xl border border-cyan-400/20"
+          className="w-full max-w-3xl bg-black/40 backdrop-blur-md p-6 rounded-xl border border-cyan-400/20"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
