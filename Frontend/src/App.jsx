@@ -1,12 +1,15 @@
 import { Navigate, Route, Routes } from "react-router";
+import { useDispatch, useSelector } from "react-redux";
+import { useEffect } from "react";
+import { checkAuth } from "./authSlice";
+import { initializeSocket, resetSocket } from './socket/socket';
+
+// Pages
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import PostsPage from "./pages/PostPage";
 import MissionsPage from "./pages/MissionPage";
 import Homepage from "./pages/Homepage";
-import { checkAuth } from "./authSlice";
-import { useDispatch, useSelector } from "react-redux";
-import { useEffect } from "react";
 import UserMission from "./pages/userMission";
 import AdminPanel from "./pages/AdminPanel";
 import MissionUpdations from "./pages/MissionUpdations";
@@ -19,13 +22,12 @@ import UserReward from './pages/UserReward';
 import AdminFeedbackPage from "./pages/Feedbackupdations";
 import ChatPage from "./pages/chatPage";
 import ProfilePage from "./pages/profilePage";
-import { initializeSocket, resetSocket } from './socket/socket';
 import Features from "./pages/FirstPage";
 import UserProfile from './pages/userProfile';
 import AdminReward from "./pages/AdminReward";
 import Leaderboard from "./pages/Leaderboard";
 
-// Protected route
+// Protected Route Component
 const ProtectedRoute = ({ element, role }) => {
   const { isAuthenticated, user } = useSelector(state => state.auth);
 
@@ -39,7 +41,7 @@ function App() {
   const dispatch = useDispatch();
   const { isAuthenticated, user, loading } = useSelector((state) => state.auth);
 
-  // Check auth status on mount
+  // Check authentication on mount
   useEffect(() => {
     dispatch(checkAuth());
   }, [dispatch]);
@@ -49,7 +51,7 @@ function App() {
     if (isAuthenticated && user?.token) {
       initializeSocket(user.token);
     }
-    return () => resetSocket(); // Cleanup
+    return () => resetSocket();
   }, [isAuthenticated, user?.token]);
 
   // Loading state
@@ -69,6 +71,7 @@ function App() {
 
   return (
     <Routes>
+      {/* Default Route */}
       <Route
         path="/"
         element={
@@ -80,53 +83,33 @@ function App() {
         }
       />
 
+      {/* Auth Routes */}
       <Route path="/login" element={isAuthenticated ? <Navigate to={redirectPath} /> : <Login />} />
       <Route path="/signup" element={isAuthenticated ? <Navigate to={redirectPath} /> : <Signup />} />
-      
-      <Route
-        path="/Dashboard"
-        element={
-          isAuthenticated
-            ? <Navigate to={user?.role === 'admin' ? '/admin' : '/'} />
-            : <Features />
-        }
-      />
+      <Route path="/Dashboard" element={isAuthenticated ? <Navigate to={redirectPath} /> : <Features />} />
 
       {/* Public Routes */}
       <Route path="/missions" element={<MissionsPage />} />
       <Route path="/posts" element={<PostsPage />} />
       <Route path="/attendance" element={<Attendance />} />
       <Route path="/avengers" element={<Avengers />} />
-      <Route path="/userProfile" element={<UserProfile />} />
       <Route path="/leaderboard" element={<Leaderboard />} />
 
-
-
-      {/* Protected Routes */}
+      {/* Protected Routes (User) */}
       <Route path="/your-missions" element={<ProtectedRoute element={<UserMission />} />} />
-      <Route path="/admin" element={<ProtectedRoute element={<AdminPanel />} role="admin" />} />
-      <Route path="/missionupdations" element={<ProtectedRoute element={<MissionUpdations />} />} />
-      <Route path="/postupdations" element={<ProtectedRoute element={<PostUpdations />} />} />
       <Route path="/your-reward" element={<ProtectedRoute element={<UserReward />} />} />
-      <Route path="/admin-reward" element={<ProtectedRoute element={<AdminReward />} />} />
-
-      <Route path="/userProfile" element={<ProtectedRoute element={<UserProfile />} />} />
-
-      <Route path="/attendaceupdations" element={
-        <ProtectedRoute
-          element={<AttendanceStart adminId={user?._id} token={user?.token} />}
-          role="admin"
-        />
-      } />
-      <Route path="/attendance-summary" element={
-        <ProtectedRoute
-          element={<AttendanceSubmit userId={user?._id} token={user?.token} />}
-          role="user"
-        />
-      } />
-      <Route path="/feedbacks" element={<ProtectedRoute element={<AdminFeedbackPage />} />} />
+      <Route path="/attendance-summary" element={<ProtectedRoute element={<AttendanceSubmit userId={user?._id} token={user?.token} />} role="user" />} />
       <Route path="/chats" element={<ProtectedRoute element={<ChatPage />} />} />
       <Route path="/profile" element={<ProtectedRoute element={<ProfilePage />} />} />
+      <Route path="/userProfile" element={<ProtectedRoute element={<UserProfile />} />} />
+
+      {/* Protected Routes (Admin) */}
+      <Route path="/admin" element={<ProtectedRoute element={<AdminPanel />} role="admin" />} />
+      <Route path="/missionupdations" element={<ProtectedRoute element={<MissionUpdations />} role="admin" />} />
+      <Route path="/postupdations" element={<ProtectedRoute element={<PostUpdations />} role="admin" />} />
+      <Route path="/attendaceupdations" element={<ProtectedRoute element={<AttendanceStart adminId={user?._id} token={user?.token} />} role="admin" />} />
+      <Route path="/feedbacks" element={<ProtectedRoute element={<AdminFeedbackPage />} role="admin" />} />
+      <Route path="/admin-reward" element={<ProtectedRoute element={<AdminReward />} role="admin" />} />
 
       {/* Catch all */}
       <Route path="*" element={<Navigate to={redirectPath} />} />
