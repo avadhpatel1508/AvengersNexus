@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, ArrowRight, Star, CheckCircle, Users, DollarSign, Calendar, BarChart3, Zap } from 'lucide-react';
-import Footer from '../components/Footer'; // Adjust path as needed
-import Loader from './Loader'; // Adjust path as needed
-import axiosClient from '../utils/axiosClient'; // Adjust path as needed
+import Footer from '../components/Footer'; 
+import Loader from './Loader';
+import axiosClient from '../utils/axiosClient'; 
 import firstImg from '../assets/first.jpg?w=800&h=600&fit=crop';
 import secondImg from '../assets/second.jpg?w=800&h=600&fit=crop';
 import thirdImg from '../assets/third.jpg?w=800&h=600&fit=crop';
